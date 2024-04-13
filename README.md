@@ -81,7 +81,7 @@ lbfextract setup disable-autocompletion
 
 ## Documentation
 
-< the link to the documentation will be added soon at the moment have a look at the docs folder >
+[https://lbf.readthedocs.io/en/latest/](https://lbf.readthedocs.io/en/latest/)
 
 
 ## Copyright
