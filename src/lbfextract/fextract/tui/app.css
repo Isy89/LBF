@@ -1,0 +1,153 @@
+
+
+#text_1 {
+    content-align: center middle;
+}
+
+Button {
+    background: gray;
+    content-align: left middle;
+    border: gray;
+    padding: 0;
+    margin: 1; 
+    color: white;
+    
+}
+
+Button:hover {
+  background: $accent-lighten-3;
+  border: $accent-lighten-3;
+
+}
+Button.button_tree:hover {
+  background: $accent-lighten-3;
+  border: $accent-lighten-3;
+
+}
+
+Button.pressed {
+    background: $accent-lighten-3;
+    content-align: left middle;
+    border:  $accent-lighten-3;
+
+}
+
+Button.submit {
+    content-align: left middle;
+    background: $panel-lighten-3 ;
+    border: $panel-lighten-3 ;
+    text-style: bold;
+    margin: 1; 
+    color: white;
+}
+
+Button.button_tree {
+    width: 35.;
+    margin: 0 7 0 3;
+    background: $panel-lighten-3 ;
+    border: $panel-lighten-3;
+    content-align: center middle;
+    padding: 0 1 0 1
+}
+
+DirectoryTree {
+    width: 55.;
+    padding: 2; 
+    color: gray;
+}
+
+Container.-active {
+    width: 55.;
+    border: black;
+    background: black;
+    dock: left;
+    overflow-y: scroll;
+    overflow-x: scroll;
+}
+
+
+#tree_footer {
+    dock: bottom;
+    height: 4.;
+}
+
+#static_tree_footer {
+    content-align: left middle;
+    height: 4.;
+    padding: 1;
+    background: $secondary-lighten-3; 
+    color: black;
+    text-style: bold;
+    overflow-x: scroll;
+
+}
+
+.hide {
+    width: 0.;
+}
+
+
+
+Header {
+  dock: top;
+  height: 3;
+  content-align: center middle;
+  }
+  
+.checkbox {
+    width: 20.;
+    content-align: left middle;
+}
+
+.label {
+    width: 35.;
+    margin: 0 7 0 3;
+    content-align: center middle;
+    background: gray;
+    text-style: bold;
+    border: black
+
+}
+.form_element {
+    background: gray;
+    content-align: left middle;
+    margin: 1;
+    border: gray;
+    color: black;
+    text-style: bold;
+    padding: 0 1 0 1;
+}
+
+.element {
+
+    background: gray;
+    color: white;
+    padding: 1;
+    border: black;
+    margin: 1;
+    height: 7;
+
+}
+
+.input_element {
+    background: gray;
+    color: black;
+    border: black;
+    width: 60.;
+}
+
+.static_task {
+    background: gray;
+    color: white;
+    border: black;
+    width: 30.;
+    height: 3;
+}
+
+.terminated_task {
+    background: green;
+    color: white;
+    border: white;
+    width: 30.;
+    height: 3;
+}

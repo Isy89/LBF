@@ -1,0 +1,13 @@
+version: 1
+formatters:
+  simple:
+    format: '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+handlers:
+  rich_handler:
+    class: rich.logging.RichHandler
+    formatter: simple
+    rich_tracebacks: True
+    tracebacks_suppress: [click]
+root:
+  level: INFO
+  handlers: [rich_handler]

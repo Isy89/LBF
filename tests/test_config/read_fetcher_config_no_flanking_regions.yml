@@ -1,0 +1,5 @@
+window: 100
+flanking_region_window: 0
+extra_bases: 1000
+n_binding_sites: 1000
+cores: 1

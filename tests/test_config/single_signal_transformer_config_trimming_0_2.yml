@@ -1,0 +1,3 @@
+flanking_window: 1000
+trimming_to_diad: 0.2
+include_flanking_window: True

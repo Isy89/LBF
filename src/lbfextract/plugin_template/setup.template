@@ -1,0 +1,19 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="fextract_{{ name_of_the_signal }}",
+    #install_requires="lbfextract",
+    entry_points={"lbfextract": [
+        "{{ name_of_the_signal }} = fextract_{{ name_of_the_signal }}.plugin:hook"
+    ],
+    {% if name_of_the_cli_command %}
+        "lbfextract_cli": [
+            "{{ name_of_the_cli_command }} = fextract_{{ name_of_the_signal }}.plugin:hook_cli"
+        ]
+    {% endif %}
+    },
+    packages=find_packages('src'),
+    package_dir={
+        '': 'src',
+    },
+)

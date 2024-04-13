@@ -1,0 +1,8 @@
+include src/lbfextract/README.md
+include src/lbfextract/config/conda_env.yml
+include src/lbfextract/fextract/tui/app.css
+include src/lbfextract/plugin_template/setup.template
+include src/lbfextract/plugin_template/plugin.template
+include src/lbfextract/plugin_template/src/*py
+include src/lbfextract/config/*yml
+include src/lbfextract/config/config/*yml

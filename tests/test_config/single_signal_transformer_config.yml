@@ -1,0 +1,11 @@
+n: 10
+window_size: 1000
+signal_transformer: "coverage"
+flip_based_on_strand: false
+gc_correction: false
+tag: "GC"
+read_start: 53
+read_end: 113
+peaks: [166]
+max_fragment_length: 0
+min_fragment_length: 500
