@@ -27,10 +27,25 @@
 
 ## A plugin implementation of feature extraction from fastq files and bed files.
 
-Fextract defines a series of hooks to carry out the feature extraction process from bam files. It extracts signals from
-the intervals defined in the bed files. The fextract default package calculates coverage across intervals defined in the
-bed file. Plugins for fextract can be implemented defining the hooks that fextract exposes as entry points during the
-program runtime
+LBFextract is a Python package for extracting features from a a bam file, with a special focus on liquid biopsy related features and transcription factors. The package is built as a plugin interface, where each plugin is a feature. It is composed by a core package, which contains the main logic, and a set of plugins which are the features. The core package is responsible for describing the workflow and how different hooks will be executed to extract the features. The plugins implement the hooks.
+The following feature extraction methods are available:
+
+ - extract-coverage
+ - extract-coverage-in-batch
+ - extract-coverage-around-dyads
+ - extract-coverage-around-dyads-in-batch
+ - extract-middle-point-coverage
+ - extract-middle-point-coverage-in-batch
+ - extract-middle-n-points-coverage
+ - extract-middle-n-points-coverage-in-batch
+ - extract-entropy
+ - extract-entropy-in-batch
+ - extract-fragment-length-distribution
+ - extract-fragment-length-distribution-in-batch
+ - extract-relative-entropy-to-flanking
+ - extract-relative-entropy-to-flanking-in-batch
+
+
 
 ## Installation
 
