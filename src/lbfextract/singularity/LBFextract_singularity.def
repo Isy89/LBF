@@ -20,12 +20,11 @@ From: ubuntu:latest
 
     # installing LBFextract
     mkdir /opt/github && cd /opt/github
-    git clone "https://isy89:token@github.com/Isy89/LBFextract.git" && cd LBFextract
+    git clone "https://isy89:token@github.com/Isy89/LBF.git" && cd LBF
     echo $PWD
     git fetch
-    git checkout Kruskal_test
     python setup.py bdist_wheel && python -m pip install --force-reinstall dist/*.whl
-    fextract setup create-conda-envs
+    lbfextract setup create-conda-envs
     pip install pytest
     pytest -s ./tests/test_cli.py::TestCli::test_extract_coverage
 
@@ -35,4 +34,4 @@ From: ubuntu:latest
 %runscript
     . /opt/conda/etc/profile.d/conda.sh
     conda activate my_env
-    exec fextract "$@"
+    exec lbfextract "$@"
