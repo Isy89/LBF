@@ -60,6 +60,7 @@ Singularity Image isntallation
 -------------------------------
 
 To install LBFextract using the Singularity image, the following steps are required:
+
 .. code-block:: bash
 
     singularity pull lbfextract_v0.1.0a1.sif library://lbfextract/lbfextract/lbfextract_v0.1.0a1.sif:0.1.0a1
