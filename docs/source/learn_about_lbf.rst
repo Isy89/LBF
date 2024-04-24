@@ -55,6 +55,32 @@ After the installation, the command line interface `lbfextract` should be availa
 
     lbfextract setup create-conda-envs # creates a separate conda env used for filtering the bam files and other steps
 
+
+Singularity Image isntallation
+-------------------------------
+
+To install LBFextract using the Singularity image, the following steps are required:
+.. code-block:: bash
+
+    singularity pull lbfextract_v0.1.0a1.sif library://lbfextract/lbfextract/lbfextract_v0.1.0a1.sif:0.1.0a1
+    singularity run lbfextract_v0.1.0a1.sif --help
+
+Using the run command you will have access to the lbfextract command line interface.
+When using the singularity image it may be necessary to bind the directory containing the BAM files and BED files and
+the output directory to the singularity container. This can be done using the following command:
+
+.. code-block:: bash
+
+    singularity run --bind /path/to/data_bam:/data_bam --bind /path/to/data_bed:/data_bed --bind /path/to/output_dir:/output_dir lbfextract_v0.1.0a1.sif --help
+
+example:
+
+.. code-block:: bash
+
+    singularity run --bind /path/to/data_bam:/data_bam --bind /path/to/data_bed:/data_bed --bind /path/to/output_dir:/output_dir lbfextract_v0.1.0a1.sif feature_extraction_commands extract-coverage --path_to_bam /data_bam/example.bam --path_to_bed /data_bed/example.bed --output_path /output_dir
+
+
+
 Coming Soon: Installation via pip (PyPI)
 -----------------------------------------
 
@@ -62,13 +88,6 @@ We are currently working on making LBFextract installable directly from the Pyth
 
 Stay tuned for updates on when this feature will be available. In the meantime, please refer to the installation instructions provided above.
 
-
-Coming Soon: Singularity Image
--------------------------------
-
-We are currently working on creating a Singularity image for LBFextract. This Singularity image will provide a containerized environment for running LBFextract on systems that support Singularity.
-
-Stay tuned for updates on when this feature will be available. In the meantime, please refer to the installation instructions provided above.
 
 
 usage

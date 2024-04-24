@@ -35,3 +35,20 @@ From: ubuntu:latest
     . /opt/conda/etc/profile.d/conda.sh
     conda activate my_env
     exec lbfextract "$@"
+
+%labels
+    Author LBFextract@gmail.com
+    Version 0.1.0a1
+    github "https://isy89:token@github.com/Isy89/LBF.git"
+    docs "https://lbf.readthedocs.io/"
+
+%help
+    This is a singularity image for LBFextract ("https://lbf.readthedocs.io/").
+    To use lbfextract just run the container. The entry point is the lbfextract command.
+    To see the available commands run:
+    singularity run lbfextract_v0.1.0a1.sif --help
+    To make the data available to the container, you can bind the data to the container:
+    singularity run --bind /path/to/data_bam:/data_bam --bind /path/to/data_bed:/data_bed --bind /path/to/output_dir:/output_dir lbfextract_v0.1.0a1.sif ...
+    and reference the bam files and bed files with the location inside the container in the desired command.
+    Example:
+    singularity run --bind /path/to/data_bam:/data_bam --bind /path/to/data_bed:/data_bed --bind /path/to/output_dir:/output_dir lbfextract_v0.1.0a1.sif feature_extraction_commands extract-coverage --path_to_bam /data_bam/example.bam --path_to_bed /data_bed/example.bed --output_path /output_dir
