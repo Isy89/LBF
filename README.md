@@ -24,6 +24,9 @@
         Copyright: Original work on LBFextract and accessory code Copyright (c) 2023 Isaac Lazzeri
         Licence: GNU General Public License v3.0
 ```
+## New: singularity image installation 
+
+have a look at the documentation for the singularity installation [here](https://lbf.readthedocs.io/)
 
 ## A plugin implementation of feature extraction from fastq files and bed files.
 
