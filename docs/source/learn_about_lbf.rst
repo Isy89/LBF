@@ -1,19 +1,22 @@
 Learn about LBFextract
 ======================
+
 introduction to lbf
-----------------
-LBFextract is a Python package for extracting features from a a bam file,
-with a special focus on liquid biopsy related features and transcription factors. 
-The package is built as a plugin interface, where each plugin is a feature.
+-------------------
+
+LBFextract is a Python package for extracting features for all genomic intervals described in a Browser Extensible Data (BED) file or multiple BED files, from a Binary Alignment Map (BAM) file,
+with a special focus on liquid biopsy related features, transcription factor binding sites (TFBSs) and Transcription Start Sites (TSSs) . 
+The package is built as a plugin interface, in which each plugin is a feature.
 It is composed by a core package, which contains the main logic, and a set of
-plugins which are the features. The core package is responsible for describing the
-workflow and how different hooks will be 
-executed to extract the features. The plugins implement the hooks.
+plugins, which represent the features extraction methods. The core package (lbfextract) describes
+the workflow and how different hooks will be executed to extract the features. 
+The plugins implement the hooks. Default coverage-based and fragmentoimics-based feature 
+extraction methods are provided as lbfextract subpackages. 
 
 .. image:: _static/LBF_structure.png
     :alt: LBF hook system and plugins architecture
 
-The current hooks that can be implemented there are:
+The current hooks that can be implemented by plugins are:
 
 * ***fetch_reads***: extract the feature from a bam file
 * ***load_reads***: load reads in case they were already extracted
@@ -24,8 +27,8 @@ The current hooks that can be implemented there are:
 * ***plot_signal***: plot the final signal
 * ***save_signal***: save the final signal
 
-LBFextracts provides also CLIhooks which allow the automatic integration of all 
-the plugins with LBFextract cli and tui interfaces.
+LBFextracts provides also CLIhooks which, if provided, allow the automatic integration of all 
+the plugins with LBFextract Command Line Interface (CLI) and Terminal User Interface (TUI).
 
 installation
 ------------
@@ -36,7 +39,7 @@ For the installation of LBFextract, the following is required:
 - conda 
 - setuptools~=62.0.0
 
-conda is used to create a separate environment used by LBFextract, such that the user conda environment is not influenced. If samtools is already available, conda is not necessary. When LBFextract does not find its specific conda environment, it will look for samtools in the current environment. Be aware that samtools should be version 1.14.
+LBFextract uses conda to create a separate environment for dependencies, which are not Python related ( samtools ). If samtools is already available, conda is not necessary. When LBFextract does not find its specific conda environment, it will look for samtools in the current environment. Be aware that samtools should be version 1.14 or ocompatible one.
 
 To be able to run the tests, the following Python package is also required:
 
