@@ -10,7 +10,7 @@ After installation of the package, you start the CLI interface by typing:
 
 .. code-block:: bash
 
-    $ fextract --help
+    $ lbfextract --help
 
 
 at the bottom of the help message you will find a list of all available commands.
@@ -18,7 +18,7 @@ To get more information about a specific command, type:
 
 .. code-block:: bash
 
-    $ fextract <command> --help
+    $ lbfextract <command> --help
 
 The following feature extraction methods are available:
 
