@@ -60,10 +60,10 @@ In the output folder the signal and the related plots are saved.
 GC correction
 -------------
 
-To improve the quality of the results LBFextract is compatible with the GC correction method 
-like GCparagon which provides a tag for each read in the bam file describing the correction factor 
-to be applied.
-Results of the gc correction can be appreciated in the following figure:
+LBFextract is compatible with GC correction methods
+like `GCparagon <https://github.com/BGSpiegl/GCparagon>`_ , which provides a fragmetn alignment tag for each read in the bam file describing the correction factor 
+to be applied to each allignment fragment.
+Results of the GC correction can be appreciated in the following figure:
 
 .. image:: _static/gc_correction_coverage.png
     :alt: coverage with and without gc correction
@@ -172,6 +172,4 @@ and returns a list with the Signal object and the plot figure generated.
 
     [Signal(obj), Figure(obj)]
 
-plugin generation
------------------
 
