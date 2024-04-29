@@ -1,22 +1,44 @@
 Learn about LBFextract
 ======================
 
-introduction to lbf
--------------------
+LBFextract a python package implementing diverse feature extraction methods from liquid biopsy whole genome sequencing data and enabling condition-specific biomarker discovery
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-LBFextract is a Python package for extracting features for all genomic intervals described in a Browser Extensible Data (BED) file or multiple BED files, from a Binary Alignment Map (BAM) file,
-with a special focus on liquid biopsy related features, transcription factor binding sites (TFBSs) and Transcription Start Sites (TSSs) . 
-The package is built as a plugin interface, in which each plugin is a feature.
-It is composed by a core package, which contains the main logic, and a set of
-plugins, which represent the features extraction methods. The core package (lbfextract) describes
-the workflow and how different hooks will be executed to extract the features. 
-The plugins implement the hooks. Default coverage-based and fragmentoimics-based feature 
-extraction methods are provided as lbfextract subpackages. 
+LBFextract is a Python package for extracting features for all genomic intervals described in a Browser Extensible Data (BED) file or multiple BED files, from a Binary Alignment Map (BAM) file and finding condition-specific or cluster-specific differentially active Transcription Factors (TF).
+It focuses on liquid biopsy related features, transcription factor binding sites (TFBSs) and Transcription Start Sites (TSSs), but can be generalized to any kind of genomic intervals with similar properties. 
+The package is built as a plugin interface, in which each plugin is a feature. It is composed by a core package, which contains the main logic, and a set of
+plugins, which represent the features extraction methods. The core package (lbfextract) describes the workflow and how different hooks will be executed to extract the features. 
+The plugins implement the hooks. Default coverage-based and fragmentoimics-based feature extraction methods are provided as lbfextract subpackages. 
+
+The following feature extraction methods are available:
+
+- coverage
+- coverage-in-batch
+- central-60b (Peter Ulz coverage)
+- sliding-window-coverage
+- sliding-window-coverage-in-batch
+- wps-coverage
+- coverage-around-dyads
+- coverage-around-dyads-in-batch
+- middle-point-coverage
+- middle-point-coverage-in-batch
+- middle-n-points-coverage
+- middle-n-points-coverage-in-batch
+- entropy
+- entropy-in-batch 
+- fragment-length-distribution ( per position )
+- fragment-length-distribution-in-batch ( per position )
+- fragment-length-ratios ( per position )
+- relative-entropy-to-flanking
+- relative-entropy-to-flanking-in-batch
+- extract-signal
 
 .. image:: _static/LBF_structure.png
     :alt: LBF hook system and plugins architecture
 
-The current hooks that can be implemented by plugins are:
+These feature extraction methods are implemented as plugins that overwrite a specific hook in lbfextract workflow.
+
+The current available hooks that can be implemented by plugins are:
 
 * ***fetch_reads***: extract the feature from a bam file
 * ***load_reads***: load reads in case they were already extracted
