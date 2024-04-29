@@ -1,10 +1,10 @@
 Learn about LBFextract
 ======================
 
-LBFextract a python package implementing diverse feature extraction methods from liquid biopsy whole genome sequencing data and enabling condition-specific biomarker discovery
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Introduction
+------------
 
-LBFextract is a Python package for extracting features for all genomic intervals described in a Browser Extensible Data (BED) file or multiple BED files, from a Binary Alignment Map (BAM) file and finding condition-specific or cluster-specific differentially active Transcription Factors (TF).
+LBFextract is a Python package for extracting features for all genomic intervals described in a Browser Extensible Data (BED) file or multiple BED files, from a Binary Alignment Map (BAM) file and identifying condition-specific or cluster-specific differentially active Transcription Factors (TF).
 It focuses on liquid biopsy related features, transcription factor binding sites (TFBSs) and Transcription Start Sites (TSSs), but can be generalized to any kind of genomic intervals with similar properties. 
 The package is built as a plugin interface, in which each plugin is a feature. It is composed by a core package, which contains the main logic, and a set of
 plugins, which represent the features extraction methods. The core package (lbfextract) describes the workflow and how different hooks will be executed to extract the features. 
