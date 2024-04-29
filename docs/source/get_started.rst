@@ -84,13 +84,13 @@ tui can be started as follows:
 
 .. code-block:: bash
 
-    $ fextract start-tui --path_to_root_dir <path_to_root_dir>
+    $ lbfextract start-tui --path_to_root_dir <path_to_root_dir>
 
 .. image:: _static/LBF_tui_1.png
-    :alt: fextract start-tui --path_to_root_dir <path_to_root_dir>
+    :alt: lbfextract start-tui --path_to_root_dir <path_to_root_dir>
 
 .. image:: _static/LBF_tui_2.png
-    :alt: fextract start-tui --path_to_root_dir <path_to_root_dir>
+    :alt: lbfextract start-tui --path_to_root_dir <path_to_root_dir>
 
 
 python api tutorial
@@ -102,7 +102,7 @@ The class is called ``FeatureExtractor`` and can be imported as follows:
 .. code-block:: python
     :linenos:
 
-    from LBFextract import FeatureExtractor
+    from lbfextract import FeatureExtractor
     fe = FeatureExtractor()
 
 The FeatureExtractor class, which is initialized in line 2, has 4 methods: a help, a `get_exctractor_names`, 
