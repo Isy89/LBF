@@ -28,7 +28,7 @@
 
 have a look at the documentation for the singularity installation [here](https://lbf.readthedocs.io/)
 
-## A plugin implementation of feature extraction from fastq files and bed files.
+## A plugin implementation of feature extraction from BAM files and BED files.
 
 LBFextract is a Python package for extracting features from a a bam file, with a special focus on liquid biopsy related features and transcription factors. The package is built as a plugin interface, where each plugin is a feature. It is composed by a core package, which contains the main logic, and a set of plugins which are the features. The core package is responsible for describing the workflow and how different hooks will be executed to extract the features. The plugins implement the hooks.
 The following feature extraction methods are available:
