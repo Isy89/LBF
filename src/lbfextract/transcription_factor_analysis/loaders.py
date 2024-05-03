@@ -116,8 +116,6 @@ class ResultsLoader:
         return pl.concat(dfs, how="vertical")
 
     def get_accessibility(self, df_: pl.DataFrame) -> np.ndarray:
-        print(self.signal_types)
-        print(self.signal_type)
         metadata = self.signal_types[self.signal_type]["validator"](self.accessibility_extraction_config)
         return self.signal_types[self.signal_type]["fun"](df_, metadata)
 

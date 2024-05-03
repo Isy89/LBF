@@ -1,63 +1,31 @@
-```
-         __       _______  ________                     __                                  __     
-        |  \     |       \|        \                   |  \                                |  \    
-        | ▓▓     | ▓▓▓▓▓▓▓\ ▓▓▓▓▓▓▓▓ ______  __    __ _| ▓▓_    ______   ______   _______ _| ▓▓_   
-        | ▓▓     | ▓▓__/ ▓▓ ▓▓__    /      \|  \  /  \   ▓▓ \  /      \ |      \ /       \   ▓▓ \  
-        | ▓▓     | ▓▓    ▓▓ ▓▓  \  |  ▓▓▓▓▓▓\\▓▓\/  ▓▓\▓▓▓▓▓▓ |  ▓▓▓▓▓▓\ \▓▓▓▓▓▓\  ▓▓▓▓▓▓▓\▓▓▓▓▓▓  
-        | ▓▓     | ▓▓▓▓▓▓▓\ ▓▓▓▓▓  | ▓▓    ▓▓ >▓▓  ▓▓  | ▓▓ __| ▓▓   \▓▓/      ▓▓ ▓▓       | ▓▓ __ 
-        | ▓▓_____| ▓▓__/ ▓▓ ▓▓     | ▓▓▓▓▓▓▓▓/  ▓▓▓▓\  | ▓▓|  \ ▓▓     |  ▓▓▓▓▓▓▓ ▓▓_____  | ▓▓|  \
-        | ▓▓     \ ▓▓    ▓▓ ▓▓      \▓▓     \  ▓▓ \▓▓\  \▓▓  ▓▓ ▓▓      \▓▓    ▓▓\▓▓     \  \▓▓  ▓▓
-         \▓▓▓▓▓▓▓▓\▓▓▓▓▓▓▓ \▓▓       \▓▓▓▓▓▓▓\▓▓   \▓▓   \▓▓▓▓ \▓▓       \▓▓▓▓▓▓▓ \▓▓▓▓▓▓▓   \▓▓▓▓ 
-    
-        O       o O         o O       o
-        | O   o | | O     o | | O   o |
-        | | O | | | | LBF | | | | O | |
-        | o   O | | o     O | | o   O |
-        o       O o         O o       O
-        
-        For any questions please contact: 
-        - <LBFextract@gmail.com>
+<div align="center">
+	<img src="docs/source/_static/logo.png">
+</div>
 
-        If you find any bugs please report them here:
-        - <https://github.com/Isy89/LBF/issues>
-
-        Copyright: Original work on LBFextract and accessory code Copyright (c) 2023 Isaac Lazzeri
-        Licence: GNU General Public License v3.0
-```
 ## New: singularity image installation 
 
 have a look at the documentation for the singularity installation [here](https://lbf.readthedocs.io/)
 
 ## Introduction.
 
-LBFextract is a Python package for extracting features for all genomic intervals described in a Browser Extensible Data (BED) file or multiple BED files, from a Binary Alignment Map (BAM) file and identifying condition-specific or cluster-specific differentially active Transcription Factors (TF).
-It focuses on liquid biopsy related features, transcription factor binding sites (TFBSs) and Transcription Start Sites (TSSs), but can be generalized to any kind of genomic intervals with similar properties. 
-The package is built as a plugin interface, in which each plugin is a feature. It is composed by a core package, which contains the main logic, and a set of
-plugins, which represent the features extraction methods. The core package (lbfextract) describes the workflow and how different hooks will be executed to extract the features. 
-The plugins implement the hooks. Default coverage-based and fragmentoimics-based feature extraction methods are provided as lbfextract subpackages. 
-
+LBFextract is a Python package for extracting features from a a bam file, with a special focus on liquid biopsy related features and transcription factors. The package is built as a plugin interface, where each plugin is a feature. It is composed by a core package, which contains the main logic, and a set of plugins which are the features. The core package is responsible for describing the workflow and how different hooks will be executed to extract the features. The plugins implement the hooks.
 The following feature extraction methods are available:
 
-- coverage
-- coverage-in-batch
-- central-60b (Peter Ulz coverage)
-- sliding-window-coverage
-- sliding-window-coverage-in-batch
-- wps-coverage
-- coverage-around-dyads
-- coverage-around-dyads-in-batch
-- middle-point-coverage
-- middle-point-coverage-in-batch
-- middle-n-points-coverage
-- middle-n-points-coverage-in-batch
-- entropy
-- entropy-in-batch 
-- fragment-length-distribution ( per position )
-- fragment-length-distribution-in-batch ( per position )
-- fragment-length-ratios ( per position )
-- relative-entropy-to-flanking
-- relative-entropy-to-flanking-in-batch
-- extract-signal
+ - extract-coverage
+ - extract-coverage-in-batch
+ - extract-coverage-around-dyads
+ - extract-coverage-around-dyads-in-batch
+ - extract-middle-point-coverage
+ - extract-middle-point-coverage-in-batch
+ - extract-middle-n-points-coverage
+ - extract-middle-n-points-coverage-in-batch
+ - extract-entropy
+ - extract-entropy-in-batch
+ - extract-fragment-length-distribution
+ - extract-fragment-length-distribution-in-batch
+ - extract-relative-entropy-to-flanking
+ - extract-relative-entropy-to-flanking-in-batch
+
 
 
 ## Installation

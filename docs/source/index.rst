@@ -44,6 +44,7 @@ Welcome to LBFextract's documentation!
    fextract_batch_entropy
    fextract_fragment_length_distribution_in_batch
    fextract_relative_entropy_to_flanking_in_batch
+   fextract_fragment_length_ratios
    plotting_lib
    transcription_factor_analysis
    
