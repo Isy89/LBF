@@ -339,7 +339,7 @@ def get_starting_msg(logo):
         {logo}
 
 
-        Welcome to the Fextract package version {lbfextract.__version__}
+        Welcome to the LBFextract package version {lbfextract.__version__}
 
         For any questions please contact: 
         - <LBFextract@gmail.com>

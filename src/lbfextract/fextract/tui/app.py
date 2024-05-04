@@ -97,12 +97,10 @@ TITLE = (
     f'''Version {lbfextract.__version__}''')
 
 WELCOME_MD = r"""
-## A pluggin implementation of feature extraction from fastq files and bed files.
+## A plugin implementation of feature extraction from BAM files and BED files.
 
-Fextract defines a series of hooks to carry out the feature extracton process from bam files.
-It extracts signals from the intervals defined in the bed files.
-The fextract default package calculates coverage across intervals defined in the bed file.
-Pluggins for fextract can be implemented defining the hooks that fextract exposes as entrypoints during the program runtime
+LBFextract defines a series of hooks to carry out the feature extraction process from BAM files.
+It extracts signals from the intervals defined in one or multiple BED files.
 
 ## Copyright 
 Original work on LBFextract and accessory code Copyright (c) 2023 Isaac Lazzeri
@@ -113,7 +111,7 @@ GNU General Public License v3.0
 ## Contact
 
 For any questions please contact: 
-* <isaac.lazzeri@medunigraz.at>
+* <LBFextract@gmail.com>
 
 If you find any bugs please report them here:
 * <https://github.com/Isy89/LBFextract/issues> 
@@ -125,7 +123,7 @@ class Welcome(Static):
     DEFAULT_CSS = """
         Welcome {
             width: 100%;
-            height: 100%;         
+            height: 100%;
             background: $surface;
         }
 
