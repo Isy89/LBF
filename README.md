@@ -2,6 +2,8 @@
 	<img src="docs/source/_static/logo.png">
 </div>
 
+----
+
 [![Code of Conduct](https://img.shields.io/badge/code%20of-conduct-ff69b4.svg?style=flat)](CODE_OF_CONDUCT.md)
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
 [![Read the Docs](https://readthedocs.org/projects/yt2mp3/badge/?version=latest)](https://lbf.readthedocs.io/)
