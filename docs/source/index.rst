@@ -28,8 +28,9 @@ Welcome to LBFextract's documentation!
    learn_about_lbf
    get_started
    examples
-   contributing
+   differential_TF_activity_analysis
    plugins
+   contributing
 
 .. toctree::
    :maxdepth: 2
