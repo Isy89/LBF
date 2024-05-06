@@ -30,12 +30,13 @@ class FextractHooks:
         single_intervals_transformed_reads.array += 1e-10
         single_intervals_transformed_reads.array /= single_intervals_transformed_reads.array.sum(axis=0)
         nominator_upper_bound = config.nominator_upper_bound - config.min_fragment_length
-        
+
         nominator_lower_bound = config.nominator_lower_bound - config.min_fragment_length
         nominator = single_intervals_transformed_reads.array[nominator_lower_bound:nominator_upper_bound].sum(axis=0)
         denominator_upper_bound = config.denominator_upper_bound - config.min_fragment_length
-        denominator_lower_bound = config.denominator_lower_bound - config.min_fragment_length 
-        denominator = single_intervals_transformed_reads.array[denominator_lower_bound:denominator_upper_bound].sum(axis=0)
+        denominator_lower_bound = config.denominator_lower_bound - config.min_fragment_length
+        denominator = single_intervals_transformed_reads.array[denominator_lower_bound:denominator_upper_bound].sum(
+            axis=0)
         return Signal(array=nominator / denominator, tags=("fl_ratios",), metadata=None)
 
     @lbfextract.hookimpl
@@ -57,11 +58,30 @@ class FextractHooks:
             dpi=300)
         return fig
 
+
 def validate_nominator_denominator(ctx, param, value):
     nominator = [int(i) for i in value.split(",")]
     return nominator
 
+
 class CliHook:
+    r"""
+        This CliHook implements the CLI interface for the extract_fragment_length_ratios feature extraction method.
+
+        **extract_fragment_length_ratios**
+
+        Given a set of genomic intervals having the same length w, the extract_fragment_length_ratios extracts the 
+        fragment length ratios of the proportion of reads contained in two different parts of the fragment length 
+        distribution at each position.
+
+        .. math::
+            \mathbf{c} = \left( \frac{\sum_{i \in [n,m)} \mathbf{d}^{l}_{i}}{\sum_{j \in [o, p)} \mathbf{d}^{l}_{j}} \right)^{w}_{l=0}
+ 
+        in which :math:`\mathbf{d}` is the fragment length distribution at position :math:`l`, :math:`n,m` the start and 
+        the end of the range of fragment lengths used in the nominator and :math:`o,p` are the start and end of the 
+        range of fragment lengths used in the denominator.
+    """
+
     @lbfextract.hookimpl_cli
     def get_command(self) -> click.Command | List[click.Command]:
         @click.command()
@@ -138,11 +158,10 @@ class CliHook:
                                         case_sensitive=False),
                       show_default=True, default="fld",
                       help="type of fragment length distribution to be extracted")
-        @click.option("--denominator", default="270,600", type=str, show_default=True, 
+        @click.option("--denominator", default="270,600", type=str, show_default=True,
                       callback=validate_nominator_denominator)
-        @click.option("--nominator", default="100,270", type=str, show_default=True, 
+        @click.option("--nominator", default="100,270", type=str, show_default=True,
                       callback=validate_nominator_denominator)
-
         def extract_fragment_length_ratios(
                 path_to_bam: pathlib.Path, path_to_bed: pathlib.Path,
                 output_path: pathlib.Path,
@@ -166,6 +185,15 @@ class CliHook:
                 flip_based_on_strand: bool = False,
                 gc_correction_tag: Optional[str] = None,
         ):
+            """
+            given a set of genomic intervals having the same length w, the extract_fragment_length_ratios extracts the 
+            fragment length ratios of the reads contained in two different parts of the fragment length distribution at 
+            each position:
+
+            .. math::
+                \frac{|{ f: f \in F \land |f| > x }|}{|{ f: f \in F \land |f| < x }|}
+
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -194,16 +222,17 @@ class CliHook:
                 "cores": cores
             }
             if max([*nominator, *denominator]) > max_fragment_length:
-                raise ValueError("the maximum value of the denominator must not be greater than the max_fragment_length ")
+                raise ValueError(
+                    "the maximum value of the denominator must not be greater than the max_fragment_length ")
             if min([*nominator, *denominator]) < min_fragment_length:
                 raise ValueError(
                     "the min value of the denominator must not be lower than the min_fragment_length ")
 
-            transform_all_intervals_config  = Config({
+            transform_all_intervals_config = Config({
                 "denominator_upper_bound": nominator[1],
                 "denominator_lower_bound": nominator[0],
                 "nominator_upper_bound": denominator[1],
-                "nominator_lower_bound": denominator[0],                
+                "nominator_lower_bound": denominator[0],
                 "min_fragment_length": min_fragment_length,
                 "max_fragment_length": max_fragment_length,
             })
@@ -227,6 +256,7 @@ class CliHook:
             return res
 
         return extract_fragment_length_ratios
+
 
 hook = FextractHooks()
 hook_cli = CliHook()

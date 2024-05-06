@@ -392,7 +392,9 @@ class CliHook:
                                                           exp_id: Optional[str],
                                                           gc_correction_tag: Optional[str] = None):
             """
-            Extract the entropy signal for a TF from a bam file and a bed file.
+            Given a set of genomic intervals having the same length w, the extract_fragment_length_distribution feature 
+            extraction method extracts the fragment length distribution at each position of the genomic intervals used for
+            multiple BED files at the same time.
             """
             read_fetcher_config = {
                 "window": window,

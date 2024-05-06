@@ -204,6 +204,20 @@ class FextractHooks:
 
 
 class CliHook:
+    r"""
+        This CliHook implements the CLI interface for the extract_fragment_length_distribution feature extraction method.
+
+        **extract_fragment_length_distribution**
+
+        Given a set of genomic intervals having the same length w, extract_fragment_length_distribution calculates the 
+        fragment length distribution at each position, which can be represented as:
+
+        .. math::
+            \mathbf{d}_l = \left( \frac{1}{|F|} \sum_{\substack{f \in F \\ |f| = p \\  i \in f}} \mathbb{1}  \right)^{p_e}_{p_s}
+
+        Where :math:`l` represents the genomic position, :math:`f` represents a fragment, :math:`p_e` represent the maximum fragment length
+        and :math:`p_s` represents the minimum fragment length
+    """
     @lbfextract.hookimpl_cli
     def get_command(self) -> click.Command:
         @click.command()
@@ -309,6 +323,10 @@ class CliHook:
 
 
         ):
+            """
+            Given a set of genomic intervals having the same length w, the extract_fragment_length_distribution feature 
+            extraction method extracts the fragment length distribution at each position of the genomic intervals used.
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,

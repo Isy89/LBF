@@ -62,6 +62,22 @@ class FextractHooks:
 
 
 class CliHook:
+    r"""
+        This CliHook implements the CLI interface for the extract_relative_entropy_to_flanking feature extraction method.
+
+        **extract_relative_entropy_to_flanking**
+
+        Given a set of genomic intervals having the same length w, extract_relative_entropy_to_flanking calculates the 
+        Relative Fragment Entropy at each position, which can be represented as:
+
+        .. math::
+            RFE_l = D_{KL}(Q_l | F) = \sum_{x \in X} Q_l(x) log(\frac{Q_l(x)}{F(x)})
+
+        Where :math:`l` represents the genomic position, :math:`Q_l` represents the fragment length distribution at 
+        position :math:`l`, :math:`X` is the alphabet (fragment length range used) and :math:`F` is the fragment length 
+        distribution in the flanking region
+    """
+
     @lbfextract.hookimpl_cli
     def get_command(self) -> click.Command | List[click.Command]:
         @click.command()
@@ -160,6 +176,16 @@ class CliHook:
                 flip_based_on_strand: bool = False,
 
         ):
+            r"""
+            Given a set of genomic intervals having the same length w, extract_relative_entropy_to_flanking calculates the 
+            Relative Fragment Entropy at each position, which can be represented as:
+
+            .. math::
+                RFE_l = D_{KL}(Q_l | F) = \sum_{x \in X} Q_l(x) log(\frac{Q_l(x)}{F(x)})
+
+            Where l represents the genomic position, Q_l represents the fragment length distribution at position l and F 
+            is the fragment length distribution in the flanking region
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -184,12 +210,12 @@ class CliHook:
                 single_signal_transformer_config["w"] = w
             if fld_type == "fld_dyad":
                 distribution = calculate_reference_distribution(path_to_sample=path_to_bam,
-                                                 min_length=min_fragment_length,
-                                                 max_length=max_fragment_length,
-                                                 chr = "chr12",
-                                                 start=34_300_000,
-                                                 end = 34_500_000
-                )
+                                                                min_length=min_fragment_length,
+                                                                max_length=max_fragment_length,
+                                                                chr="chr12",
+                                                                start=34_300_000,
+                                                                end=34_500_000
+                                                                )
                 peaks = get_peaks(distribution) + min_fragment_length
                 single_signal_transformer_config["peaks"] = [peaks[0]]
             plot_signal_config = {}

@@ -369,6 +369,10 @@ class CliHookExtractCoverage:
                                  min_fragment_length: int,
                                  max_fragment_length: int
                                  ):
+            """
+            Given a set of genomic intervals having the same length w, extract_wps_coverage feature extraction method 
+            extracts the windowed protection score at each position.
+            """
             if min_fragment_length <= window_size:
                 raise ValueError("min_fragment_length must be greater than window_size to avoid reads starting and "
                                  "ending in the same wps window")
@@ -490,6 +494,13 @@ class CliHookExtractCoverage:
                                    exp_id: Optional[str],
                                    flip_based_on_strand: bool,
                                    gc_correction_tag: Optional[str]):
+
+            """
+            Given a set of genomic intervals having the same length w this feature extraction method extracts the 
+            fragment coverage around nucleosomes dyads. To achieve this, it models from which poly-nucleosomal structure
+            a fragment might have originated from and infers the position of the dyad before degradation accordingly.
+            """
+
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -611,11 +622,13 @@ class CliHookExtractCoverage:
                                           exp_id: Optional[str],
                                           flip_based_on_strand: bool,
                                           gc_correction_tag: Optional[str]):
-            
-            """This command extract the middle point coverage at each position for all provided genomic intervals having 
-            the same length. This can be summarized with the following methods: mean, median, max, min, skip. In case skip
-             is selected no summary is generated and the profiles of each genomic interval are reported. The midpoint 
-             coverage corresponds at each position to the number of fragments' midpoints overlapping that position. """
+
+            """
+            This command extracts the middle point coverage at each position for all provided genomic intervals having 
+            the same length. This can be summarized with the following methods: mean, median, max, min, skip. In case skip 
+            is selected no summary is generated and the profiles of each genomic interval are reported. The midpoint 
+            coverage corresponds at each position to the number of fragments' midpoints overlapping that position. 
+             """
 
             read_fetcher_config = {
                 "window": window,
@@ -731,14 +744,16 @@ class CliHookExtractCoverage:
                                              flip_based_on_strand: bool,
                                              gc_correction_tag: Optional[str]
                                              ):
-            
-            """This command extract the middle n points coverage at each position for all provided genomic intervals having 
-            the same length. This can be summarized with the following methods: mean, median, max, min, skip. In case skip
+
+            """
+             This command extracts the middle n points coverage at each position for all provided genomic intervals having 
+             the same length. This can be summarized with the following methods: mean, median, max, min, skip. In case skip
              is selected no summary is generated and the profiles of each genomic interval are reported. The middle n points 
              coverage corresponds at each position to the number of fragmetnts' positions lying within the ragne [m-n, m+n) 
              (in which m is the midpoint and n the number of position surrounding it from both sides) overlapping a genomic
-             interval"""
-            
+             interval
+             """
+
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -976,6 +991,11 @@ class CliHookExtractCoverage:
                 read_start: int,
                 read_end: int,
         ):
+            """
+            Given a set of genomic intervals having the same length w, this feature extraction method extracts the read 
+            coverage in which only the central position of a read are taken into acount. which part of the read is taken 
+            into account is defined by the paramenters, which by default are 53-113
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,

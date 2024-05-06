@@ -1,13 +1,13 @@
-fextract\_length\_ratios package 
+fextract\_fragment\_length\_ratios package 
 =================================================
 
 Submodules
 ----------
 
-fextract\_length\_ratios.plugin module
+fextract\_fragment\_length\_ratios.plugin module
 -------------------------------------------------------
 
-.. automodule:: lbfextract.fragment_length_ratios.plugin
+.. automodule:: lbfextract.fextract_fragment_length_ratios.plugin
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +15,7 @@ fextract\_length\_ratios.plugin module
 Module contents
 ---------------
 
-.. automodule:: lbfextract.fragment_length_ratios
+.. automodule:: lbfextract.fextract_fragment_length_ratios
    :members:
    :undoc-members:
    :show-inheritance:

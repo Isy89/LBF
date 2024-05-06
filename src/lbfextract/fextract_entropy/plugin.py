@@ -18,9 +18,9 @@ from lbfextract.fextract_fragment_length_distribution.schemas import SingleSigna
 from lbfextract.fextract_fragment_length_distribution.plugin import calculate_reference_distribution, get_peaks
 
 
-
 def get_entropy(x):
     return scipy.stats.entropy(x) if x.sum() > 0 else 0
+
 
 class FextractHooks:
 
@@ -35,8 +35,8 @@ class FextractHooks:
         single_intervals_transformed_reads.array += 1e-10
         single_intervals_transformed_reads.array /= single_intervals_transformed_reads.array.sum(axis=0)
         entropy = np.apply_along_axis(lambda x: scipy.stats.entropy(x),
-                                                           0,
-                                                           single_intervals_transformed_reads.array)
+                                      0,
+                                      single_intervals_transformed_reads.array)
         return Signal(array=entropy, tags=("entropy",), metadata=None)
 
     @lbfextract.hookimpl
@@ -60,6 +60,21 @@ class FextractHooks:
 
 
 class CliHook:
+    r"""
+        This CliHook implements the CLI interface for the extract_entropy feature extraction method.
+
+        **extract_entropy**
+
+        Given a set of genomic intervals having the same length w, extract_entropy calculates the 
+        Entropy at each position, which can be represented as:
+
+        .. math::
+            E_l = -\sum_{x \in X} P_l(x) log(P_l(x))
+
+        Where :math:`l` represents the genomic position, :math:`P_l` represents the fragment length distribution at 
+        position :math:`l` and :math:`X`is the alphabet (fragment length range used) 
+    """
+
     @lbfextract.hookimpl_cli
     def get_command(self) -> click.Command | List[click.Command]:
         @click.command()
@@ -158,6 +173,10 @@ class CliHook:
                 flip_based_on_strand: bool = False,
 
         ):
+            """
+            Given a set of genomic intervals having the same length w, the extract_entropy feature extraction method extracts
+            the entropy at each position of the genomic intervals used.
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -182,12 +201,12 @@ class CliHook:
                 single_signal_transformer_config["w"] = w
             if fld_type == "fld_dyad":
                 distribution = calculate_reference_distribution(path_to_sample=path_to_bam,
-                                                 min_length=min_fragment_length,
-                                                 max_length=max_fragment_length,
-                                                 chr = "chr12",
-                                                 start=34_300_000,
-                                                 end = 34_500_000
-                )
+                                                                min_length=min_fragment_length,
+                                                                max_length=max_fragment_length,
+                                                                chr="chr12",
+                                                                start=34_300_000,
+                                                                end=34_500_000
+                                                                )
                 peaks = get_peaks(distribution) + min_fragment_length
                 single_signal_transformer_config["peaks"] = [peaks[0]]
             plot_signal_config = {}

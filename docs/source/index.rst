@@ -9,15 +9,15 @@
 
 ----
 
-Welcome to LBFextract's documentation!
-======================================
-
-
 .. image:: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg
 .. image:: https://img.shields.io/badge/code%20of-conduct-ff69b4.svg?style=flat
 .. image:: https://img.shields.io/badge/License-GPL%20v3-yellow.svg
 .. image:: https://img.shields.io/badge/python->=3.10-blue.svg
    :alt: Python
+
+Welcome to LBFextract's documentation!
+======================================
+
 
 .. contents:: Table of Contents
    :depth: 2

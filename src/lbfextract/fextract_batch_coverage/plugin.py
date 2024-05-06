@@ -16,12 +16,14 @@ from lbfextract.fextract.cli_lib import calculate_reference_distribution, get_pe
 import lbfextract.fextract
 import lbfextract.fextract.signal_transformer
 from lbfextract.core import App
-from lbfextract.fextract.schemas import AppExtraConfig, Config, SingleSignalTransformerConfig, ReadFetcherConfig, SignalSummarizer
+from lbfextract.fextract.schemas import AppExtraConfig, Config, SingleSignalTransformerConfig, ReadFetcherConfig, \
+    SignalSummarizer
 from lbfextract.utils import load_temporary_bed_file, filter_bam, get_tmp_fextract_file_name, generate_time_stamp, \
     check_input_bed, check_input_bam, filter_out_empty_bed_files
 from lbfextract.utils_classes import Signal
 from lbfextract.fextract_batch_coverage.schemas import PlotConfig
-from lbfextract.plotting_lib.plotting_functions import plot_heatmap_kde_amplitude, correlation_map_plot, plot_signal_batch, \
+from lbfextract.plotting_lib.plotting_functions import plot_heatmap_kde_amplitude, correlation_map_plot, \
+    plot_signal_batch, \
     plot_signal
 
 logger = logging.getLogger(__name__)
@@ -414,6 +416,10 @@ class CliHook:
                                       flip_based_on_strand: bool = True,
                                       gc_correction_tag: Optional[str] = None
                                       ):
+            """
+            extract_coverage_in_batch extracts the fragment coverage from multiple BED files at once and generates 
+            a signal for each BED file provided.
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -527,6 +533,10 @@ class CliHook:
                                                    flip_based_on_strand: bool = True,
                                                    gc_correction_tag: Optional[str] = None
                                                    ):
+            """
+            extract_coverage_around_dyads_in_batch extracts the fragment coverage around dyads from multiple BED files 
+            at once and generates a signal for each BED file provided.
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -648,6 +658,10 @@ class CliHook:
                                                    flip_based_on_strand: bool = True,
                                                    gc_correction_tag: Optional[str] = None
                                                    ):
+            """
+            extract_middle_point_coverage_in_batch extracts the fragment coverage considering only the central position of
+            each read from multiple BED files at once and generates a signal for each BED file provided.
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -760,6 +774,10 @@ class CliHook:
                                                       exp_id: Optional[str],
                                                       flip_based_on_strand: bool = True,
                                                       gc_correction_tag: Optional[str] = None):
+            """
+            extract_middle_n_points_coverage_in_batch extracts the fragment coverage considering only the central positions 
+            of each read from multiple BED files at once and generates a signal for each BED file provided.
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -877,6 +895,10 @@ class CliHook:
                                                      window_size: int,
                                                      flip_based_on_strand: bool = True,
                                                      gc_correction_tag: Optional[str] = None):
+            """
+            extract_sliding_window_coverage_in_batch extracts the fragment coverage using a sliding window aproach to 
+            reduce the problems encounterd when using low coverage samples and generates a signal for each BED file provided.
+            """
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
