@@ -51,16 +51,3 @@ class FeatureExtractor:
 
 feature_extractor = FeatureExtractor()
 
-if __name__ == "__main__":
-    import pathlib
-
-    path_to_tests_folder = pathlib.Path(__file__).parents[2] / "tests"
-    path_to_bam = path_to_tests_folder / "test_bams/C344_test.bam"
-    path_to_bed = path_to_tests_folder / "test_bed/CTCF.sorted.gtrd_version_21_12.1000_sites.hg38.bed"
-    fe = FeatureExtractor()
-    res = fe.extract("extract_coverage",
-                     path_to_bam=path_to_bam,
-                     path_to_bed=path_to_bed,
-                     output_path=path_to_tests_folder / "output_test_res",
-                     summarization_method="skip")
-    print(res)
