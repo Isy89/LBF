@@ -108,7 +108,7 @@ pympler==1.0.1
     # via -r requirements.in
 pyparsing==3.1.2
     # via matplotlib
-pyranges==0.0.129
+pyranges @ git+https://github.com/pyranges/pyranges.git
     # via -r requirements.in
 pysam==0.22.0
     # via -r requirements.in
