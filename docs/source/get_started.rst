@@ -102,7 +102,7 @@ The class is called ``FeatureExtractor`` and can be imported as follows:
 .. code-block:: python
     :linenos:
 
-    from lbfextract import FeatureExtractor
+    from lbfextract.feature_extractor import FeatureExtractor
     fe = FeatureExtractor()
 
 The FeatureExtractor class, which is initialized in line 2, has 4 methods: a help, a `get_exctractor_names`, 
