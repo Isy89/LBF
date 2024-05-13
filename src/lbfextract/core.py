@@ -72,7 +72,7 @@ class App:
                  save_signal_config: Config = None,
                  extra_config: AppExtraConfig = None,
                  id: str = None,
-                 debug: bool = True):
+                 debug: bool = False):
 
         self.id = id or str(uuid.uuid1())
         self.plugins_name = plugins_name
