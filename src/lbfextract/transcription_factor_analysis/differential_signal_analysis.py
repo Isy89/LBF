@@ -31,6 +31,15 @@ logger = logging.getLogger(__name__)
 matplotlib.use('Agg')
 
 
+def get_state(mean_1, mean_2):
+    state_m1 = np.where(mean_1 < 0, "+", "-").astype(str)
+    state_m2 = np.where(mean_2 < 0, "+", "-").astype(str)
+    return np.char.add(state_m1, state_m2)
+
+def signed_log2(x):
+    return np.sign(x) * np.log2(np.abs(x) + 1)
+
+
 class DiffSignalAnalysis:
     def __init__(self,
                  df: pl.DataFrame | pd.DataFrame,
@@ -362,7 +371,7 @@ class DiffSignalAnalysis:
         self.enrichment_results = {
             f"{group_pair}": self._get_enrichment(
                 diff_active_region_per_group_pair.get_group(group_pair)[self.inner_group_column]
-                    .to_list()
+                .to_list()
             )
             for group_pair in diff_active_region_per_group_pair.groups
         }
@@ -491,6 +500,7 @@ class DiffSignalAnalysis:
         if self.results is None:
             logger.warning("Analysis has not been run yet. Running analysis first")
             self.run()
+        self.results.loc[self.non_interpretable_fc, "log2_fc"] = "NI"
         run_folder = self.get_output_folder()
         res_by_group_pair = self.results.groupby("group_pairs")
         for group_pair in res_by_group_pair.groups:
@@ -499,8 +509,8 @@ class DiffSignalAnalysis:
             group = res_by_group_pair.get_group(group_pair)
             (
                 group
-                    .sort_values("adj_p-val", ascending=True)
-                    .to_csv(output_path_group_pair / f"fextract_diff_signal_analysis_{group_pair}.csv")
+                .sort_values("adj_p-val", ascending=True)
+                .to_csv(output_path_group_pair / f"fextract_diff_signal_analysis_{group_pair}.csv")
             )
             if self.enrichment_results.get(group_pair, None) is not None:
                 self.enrichment_results.get(group_pair).to_csv(output_path_group_pair / f"enrichment_{group_pair}.csv")
@@ -521,10 +531,10 @@ class DiffSignalAnalysis:
 
         df_heatmap = (
             self.extract_column_for_plot(self.df.loc[self.df[self.inner_group_column].isin(rejected_tfs)])
-                .pivot_table(index="sample_name",
-                             columns=self.inner_group_column,
-                             values=self.value_column,
-                             fill_value=0)
+            .pivot_table(index="sample_name",
+                         columns=self.inner_group_column,
+                         values=self.value_column,
+                         fill_value=0)
         )
 
         def get_outliars_mask(column, bound="lower"):
@@ -553,24 +563,30 @@ class DiffSignalAnalysis:
         filter_rows = self.results[self.inner_group_column].isin(rejected_tfs)
         adjusted_pvals = (
             self.results.loc[filter_rows]
-                .pivot_table(index="group_pairs",
-                             columns=self.inner_group_column,
-                             values="adj_p-val",
-                             fill_value=np.nan).T
+            .pivot_table(index="group_pairs",
+                         columns=self.inner_group_column,
+                         values="adj_p-val",
+                         fill_value=np.nan).T
         )
         mean_1 = self.results.mean_group_1.values
         mean_2 = self.results.mean_group_2.values
+
         fc = mean_1 / mean_2
-        log2_fc = np.sign(fc) * np.where(np.logical_and(fc > 0, fc < 1), np.log2(fc), np.abs(np.log2(np.abs(fc))))
+        log2_fc = np.log2(np.abs(fc))
+        self.non_interpretable_fc = fc < 0
+        states = get_state(mean_1, mean_2)
         self.results.loc[:, "log2_fc"] = log2_fc
+        self.results.loc[:, "signed_log2"] = signed_log2(fc)
+        self.results.loc[:, "state"] = states
+        self.results.loc[:, "change"] = mean_1 - mean_2
 
         log2_fc_vals = (
             self.results
-                .assign(log2_fc=log2_fc)
-                .pivot_table(index="group_pairs",
-                             columns=self.inner_group_column,
-                             values="log2_fc",
-                             fill_value=np.nan)
+            .assign(log2_fc=log2_fc)
+            .pivot_table(index="group_pairs",
+                         columns=self.inner_group_column,
+                         values="log2_fc",
+                         fill_value=np.nan)
         ).T
 
         if not df_heatmap.empty:
