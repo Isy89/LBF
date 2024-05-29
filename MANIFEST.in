@@ -6,3 +6,4 @@ include src/lbfextract/plugin_template/plugin.template
 include src/lbfextract/plugin_template/src/*py
 include src/lbfextract/config/*yml
 include src/lbfextract/config/config/*yml
+include src/lbfextract/data/*csv
