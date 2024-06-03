@@ -1,1 +1,1 @@
-lbfextract @ git+https://github.com/Isy89/LBF.git
+LBFextract @ git+https://github.com/Isy89/LBF.git
