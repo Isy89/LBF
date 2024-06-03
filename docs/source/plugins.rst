@@ -6,22 +6,23 @@ Plugins
     **work in progress**
 
 Plugins offer a way to exchange the behaviour of some part of LBFextract's workflow. 
-This is achieved through a hook mechanism. LBFextract workflow for feature extraction method is described in the core 
+This is achieved through a hook mechanism. LBFextract workflow for a feature extraction method is described in the core 
 module and is composed by a sequence of steps. Each step is a hook. Hooks are implemented by plugins. The default 
 behaviour of LBFextract is itself implemented in the fextract plugin, which provides the implementation of the 
 coverage-based methods. 
-Each hook is essentially a python function. In LBFextract there are two types of hooks: CliHook and FextractHooks.
+Each hook is essentially a decorated python function. In LBFextract there are two types of hooks: CliHook and FextractHooks.
 The former is responsible for the implementation of the different steps of the workflow. The latter is responsible for the 
 CLI commands needed to run the feature extraction method.
 The implementation in LBFextract is simplified through the "setup new-plugin" command. i.e. to create
-a new plugin extracting a  "cool_signal_name" one can run the following:
+a new plugin extracting a  "cool_signal_name" (the complete implementation of this example can be found 
+`here <https://github.com/Isy89/fextract_cool_signal_name/tree/main>`_), one can run the following:
 
 .. code-block:: bash
     
     lbfextract setup new-plugin --name_of_the_signal cool_signal_name --name_of_the_cli_command extract_cool_signal_name --out_dir OUTPUTDIR
 
-This will generate most of the boilerplate needed to generate a lbfextract's pluing, which includes the following 
-files:
+This will generate most of the boilerplate code needed to generate a LBFextract's pluing. An LBFextract's plugin includes 
+the following files:
 
 .. code-block:: bash
 
@@ -33,13 +34,13 @@ files:
     │   └── └── plugin.py
     └── tests
 
-This plugin can be installed as follow:
+Once it has been generated, the plugin can be installed as follow:
 
 .. code-block:: bash
     
-    cd OUTPUTDIR &&  python -m build --wheel . && python -m pip install --force-reinstall dist/*.whl
+    cd OUTPUTDIR &&  python -m pip install .
 
-after a succesfull installation the `extract_cool_signal_name` command will be visible in the
+after a successful installation, the `extract_cool_signal_name` command will be visible in the
 lbfextract feature_extraction_commands --help. 
 At this moment the package won't do much since the hooks are not implemented. To implement them
 one can open the generated plugin.py file.
@@ -51,7 +52,7 @@ After generating the plugin the plugin.py file will look like this:
 
 .. code-block:: python
     :linenos:
-
+    
     import logging
     import pathlib
     from typing import Any
@@ -308,7 +309,7 @@ After generating the plugin the plugin.py file will look like this:
 
 
 Assuming the cool signal is just the number of reads in each interval, one could implement this by 
-replacing the transform_single_intervals and transform_all_intervals:
+replacing the transform_single_intervals and transform_all_intervals hooks as follow:
 
 .. code-block:: python
     :linenos:
@@ -322,13 +323,21 @@ replacing the transform_single_intervals and transform_all_intervals:
         :param config: config specific to the function
         :param extra_config: config containing context information plus extra parameters
         """
+        # transformed_reads is a pandas DataFrame with the following columns: 
+        # 'Chromosome', 'Start', 'End', 'Name', 'Score', 'Strand', 'reads_per_interval'
+        # and reads_per_interval contains pysam.libcalignmentfile.IteratorRowRegion for each interval
 
-        def count_rads_in_interval(x: pysam.libcalignment.IterRowRegion) -> int:
+        def count_rads_in_interval(x: pysam.libcalignmentfile.IteratorRowRegion) -> int:
             return len(list(x))
 
-        array = transformed_reads.apply(lambda x: count_rads_in_interval(x), axis=1)
+        transformed_reads.index = transformed_reads.Chromosome.astype("str") + "-" + transformed_reads.Start.astype(
+        "str") + "-" + transformed_reads.End.astype("str")
 
-        return Signal(array, metadata=None, tags=tuple(["cool_signal",]))
+        reads_per_interval_pd_series = transformed_reads.reads_per_interval.apply(lambda x: count_rads_in_interval(x))
+
+        return Signal(reads_per_interval_pd_series.values,
+                      metadata=reads_per_interval_pd_series.index.copy(),
+                      tags=tuple(["cool_signal", ]))
 
     @lbfextract.hookimpl
     def transform_all_intervals(self, single_intervals_transformed_reads: Signal, config: Any,
@@ -339,26 +348,18 @@ replacing the transform_single_intervals and transform_all_intervals:
         :param extra_config: extra configuration that may be used in the hook implementation
         """
         return single_intervals_transformed_reads
-    
-    @lbfextract.hookimpl
-    def plot_signal(self, signal: Signal, config: Any, extra_config: Any) -> matplotlib.figure.Figure:
-        """
-        :param signal: Signal object containing the signals per interval
-        :param extra_config: extra configuration that may be used in the hook implementation
-        """
-        pass 
 
 In this way when executing:
 
 .. code-block:: bash
 
-    lbfextract feature_extraction_commands extract_cool_signal_name --path_to_bam <path_to_bam> --path_to_bed <path_to_bed> --output_path <output_path>
+    lbfextract feature_extraction_commands extract-cool-signal-name --path_to_bam <path_to_bam> --path_to_bed <path_to_bed> --output_path <output_path>
 
-after fetching the reads lbfextract will execute the newly implemented hooks in place of the default ones. 
-One can use hooks already implemented in other plugins by registering them in the App.plugins_name attribute. 
-This accepts a list of plugins. Hooks are parsed from left to right, and only the first not None hook of the plugins will be run.
+after fetching the reads, lbfextract will execute the newly implemented hooks in place of the default ones. 
+One can use already implemented hooks in other plugins by registering them in the App.plugins_name attribute. 
+This accepts a list of plugins. Hooks are parsed from left to right, and only the first not None hook will be run.
 i.e. if there are 2 plugins implementing the plot_signal hook, which are registered in the App object as follow: 
 App.plugins_name(["plug2", "plug1"]), only plug2 plot_signal hook will be run. New parameters can be provided in form of 
-config. config can be dict object but LBFextract provides also a Config object which offers a way of validating the provided 
-parameters with a voluptuous schema. One can subclass Config providing a voluptuous schema. One can inspect the 
+config. Config can be `dict` object but LBFextract provides also a Config object, which offers a way of validating the provided 
+parameters with a voluptuous schema. One can subclass the Config class providing a voluptuous schema. One can inspect the 
 lbfextract.fextract.schema module for an example. 

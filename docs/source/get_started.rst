@@ -61,7 +61,7 @@ GC correction
 -------------
 
 LBFextract is compatible with GC correction methods
-like `GCparagon <https://github.com/BGSpiegl/GCparagon>`_ , which provides a fragmetn alignment tag for each read in the bam file describing the correction factor 
+like `GCparagon <https://github.com/BGSpiegl/GCparagon>`_ , which provides a fragment alignment tag for each read in the bam file describing the correction factor 
 to be applied to each allignment fragment.
 Results of the GC correction can be appreciated in the following figure:
 
@@ -171,5 +171,12 @@ and returns a list with the Signal object and the plot figure generated.
     :linenos:
 
     [Signal(obj), Figure(obj)]
+
+
+.. warning::
+
+    LBFextract automatically fetch the temporary directory depending on the operating system. 
+    If neither of the following variable is set: FRAGMETOMICS_TMP ("LBFextract specific tmp folder"), TEMPDIR, TEMP, TMP, 
+    the package will use the system `/tmp`.
 
 
