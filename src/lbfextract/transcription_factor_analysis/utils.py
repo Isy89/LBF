@@ -9,12 +9,12 @@ def generate_time_stamp() -> str:
     return datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-def remove_outliers(data, threshold=1.5) -> pd.Series:
+def remove_outliers(data: pd.Series, threshold: float = 1.5) -> pd.Series:
     """
     Remove outliers from a Pandas Series using the IQR method.
 
-    :param pandas.Series data: The Pandas Series of data.
-    :param float threshold: The threshold value to determine outliers (default: 1.5).
+    :param data: The data input.
+    :param threshold: The threshold value to determine outliers (default: 1.5).
     :return: The data with outliers removed.
     """
     q1 = data.quantile(0.25)
