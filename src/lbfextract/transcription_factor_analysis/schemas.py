@@ -1,6 +1,7 @@
 import voluptuous
 from lbfextract.fextract.schemas import Config
 
+
 class AccessibilityConfig(Config):
     start: int
     end: int

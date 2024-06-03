@@ -99,7 +99,6 @@ class ResultsLoader:
             path_exists = i.exists()
             path_hash = self._hash_path_sample_results(str(i))
             path_hash_exists = path_hash in self.sample_sheet.index
-            print(self.sample_sheet)
             if not path_exists or not path_hash_exists:
                 msg = f"path {i} {'exists' if path_exists else 'does not exist'}"
                 msg1 = f"path hash {path_hash} {'is in index' if path_hash_exists else 'is not in index'}"
