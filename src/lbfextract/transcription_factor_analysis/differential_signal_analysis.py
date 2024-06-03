@@ -36,6 +36,7 @@ def get_state(mean_1, mean_2):
     state_m2 = np.where(mean_2 < 0, "+", "-").astype(str)
     return np.char.add(state_m1, state_m2)
 
+
 def signed_log2(x):
     return np.sign(x) * np.log2(np.abs(x) + 1)
 

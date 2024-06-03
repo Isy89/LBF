@@ -57,7 +57,6 @@ installation
 For the installation of LBFextract, the following is required:
 
 - python>=3.10
-- build (`python -m pip install build`)
 - conda 
 - setuptools~=62.0.0
 
@@ -72,7 +71,7 @@ LBFextract can be installed as follows:
 .. code-block:: bash
 
     git clone https://github.com/Isy89/LBF.git && cd LBF
-    python -m build --wheel . && python -m pip install --force-reinstall dist/*.whl # "python -m pip install ." should also work
+    python -m pip install .
 
 After the installation, the command line interface `lbfextract` should be available. Using it, a conda environment isolated from the current one containing samtools can be created. This step can be omitted if samtools~=1.14 is already present. This installation of this conda env is done as follows:
 

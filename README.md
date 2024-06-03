@@ -50,7 +50,6 @@ The following feature extraction methods are available:
 For the installation of LBFextract, the following is required:
 
     - python>=3.10
-    - build (python -m pip install build)
     - conda 
     - setuptools~=62.0.0
 
@@ -68,7 +67,7 @@ LBFextract can be installed as follows:
 
 ```bash
 git clone https://github.com/Isy89/LBF.git && cd LBF
-python -m build --wheel . && python -m pip install --force-reinstall dist/*.whl # "python -m pip install ." should also work
+python -m pip install .
 ```
 
 After the installation, the command line interface lbfextract should be available.
