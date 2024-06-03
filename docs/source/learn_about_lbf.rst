@@ -4,11 +4,16 @@ Learn about LBFextract
 Introduction
 ------------
 
-LBFextract is a Python package for extracting features for all genomic intervals described in a Browser Extensible Data (BED) file or multiple BED files, from a Binary Alignment Map (BAM) file and identifying condition-specific or cluster-specific differentially active Transcription Factors (TF).
-It focuses on liquid biopsy related features, transcription factor binding sites (TFBSs) and Transcription Start Sites (TSSs), but can be generalized to any kind of genomic intervals with similar properties. 
-The package is built as a plugin interface, in which each plugin is a feature. It is composed by a core package, which contains the main logic, and a set of
-plugins, which represent the features extraction methods. The core package (lbfextract) describes the workflow and how different hooks will be executed to extract the features. 
-The plugins implement the hooks. Default coverage-based and fragmentoimics-based feature extraction methods are provided as lbfextract subpackages. 
+LBFextract is a Python package for extracting features for all genomic intervals described in a Browser Extensible Data 
+(BED) file or multiple BED files, from a Binary Alignment Map (BAM) file and identifying condition-specific or 
+cluster-specific differentially active Transcription Factors (TF).
+It focuses on liquid biopsy related features, transcription factor binding sites (TFBSs) and Transcription Start Sites
+(TSSs), but can be generalized to any kind of genomic intervals with similar properties. 
+The package is built as a plugin interface, in which each plugin is a feature. It is composed by a core package, which 
+contains the main logic, and a set of plugins, which represent the features extraction methods. The core package 
+(lbfextract) describes the workflow and how different hooks will be executed to extract the features. 
+The plugins implement the hooks. Default coverage-based and fragmentomics-based feature extraction methods are provided 
+as lbfextract subpackages. 
 
 The following feature extraction methods are available:
 
@@ -49,7 +54,7 @@ The current available hooks that can be implemented by plugins are:
 * ***plot_signal***: plot the final signal
 * ***save_signal***: save the final signal
 
-LBFextracts provides also CLIhooks which, if provided, allow the automatic integration of all 
+LBFextract provides also CLIhooks which, if provided, allow the automatic integration of all 
 the plugins with LBFextract Command Line Interface (CLI) and Terminal User Interface (TUI).
 
 installation
@@ -60,7 +65,9 @@ For the installation of LBFextract, the following is required:
 - conda 
 - setuptools~=62.0.0
 
-LBFextract uses conda to create a separate environment for dependencies, which are not Python related ( samtools ). If samtools is already available, conda is not necessary. When LBFextract does not find its specific conda environment, it will look for samtools in the current environment. Be aware that samtools should be version 1.14 or ocompatible one.
+LBFextract uses conda to create a separate environment for dependencies, which are not Python related ( samtools ). 
+If samtools is already available, conda is not necessary. When LBFextract does not find its specific conda environment, 
+it will look for samtools in the current environment. Be aware that samtools should be version 1.14 or compatible one.
 
 To be able to run the tests, the following Python package is also required:
 
@@ -73,7 +80,9 @@ LBFextract can be installed as follows:
     git clone https://github.com/Isy89/LBF.git && cd LBF
     python -m pip install .
 
-After the installation, the command line interface `lbfextract` should be available. Using it, a conda environment isolated from the current one containing samtools can be created. This step can be omitted if samtools~=1.14 is already present. This installation of this conda env is done as follows:
+After the installation, the command line interface `lbfextract` should be available. Using it, a conda environment 
+isolated from the current one containing samtools can be created. This step can be omitted if samtools~=1.14 is already 
+present. This installation of this conda env is done as follows:
 
 .. code-block:: bash
 
@@ -109,9 +118,11 @@ example:
 Coming Soon: Installation via pip (PyPI)
 -----------------------------------------
 
-We are currently working on making LBFextract installable directly from the Python Package Index (PyPI) using pip. This feature will allow for easier installation and distribution across different platforms.
+We are currently working on making LBFextract installable directly from the Python Package Index (PyPI) using pip. This 
+feature will allow for easier installation and distribution across different platforms.
 
-Stay tuned for updates on when this feature will be available. In the meantime, please refer to the installation instructions provided above.
+Stay tuned for updates on when this feature will be available. In the meantime, please refer to the installation 
+instructions provided above.
 
 
 

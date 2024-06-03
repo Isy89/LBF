@@ -96,7 +96,7 @@ tui can be started as follows:
 python api tutorial
 -------------------
 
-LBFextract offers a class to use all feactuer extraction method directly from python.
+LBFextract offers a class to use all feature extraction methods directly from python.
 The class is called ``FeatureExtractor`` and can be imported as follows:
 
 .. code-block:: python

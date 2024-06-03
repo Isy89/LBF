@@ -16,7 +16,7 @@ The result will be a plot as well as the signal saved in pickled format. A Signa
 - tags corresponds to the name of the plugins used at each step to generate the signal. 
 
 .. image:: _static/coverage_signal_plot.png
-    :alt: fextract  feature_extraction_commands extract-coverage --path_to_bam <path_to_bam> --path_to_bed <path_to_bed> --output_path <path_to_output_dir> --summarization_method mean
+    :alt: lbfextract  feature_extraction_commands extract-coverage --path_to_bam <path_to_bam> --path_to_bed <path_to_bed> --output_path <path_to_output_dir> --summarization_method mean
 
 
 .. code-block:: bash
@@ -62,7 +62,7 @@ one for row.
     $ lbfextract  feature_extraction_commands extract-coverage-dyads --path_to_bam <path_to_bam> --path_to_bed <path_to_bed> --output_path <path_to_output_dir>
 
 .. image:: _static/coverage_around_dyads.png
-    :alt: fextract  feature_extraction_commands extract-coverage-dyads --path_to_bam <path_to_bam> --path_to_bed <path_to_bed> --output_path <path_to_output_dir>
+    :alt: lbfextract  feature_extraction_commands extract-coverage-dyads --path_to_bam <path_to_bam> --path_to_bed <path_to_bed> --output_path <path_to_output_dir>
 
 
 Summary plot
