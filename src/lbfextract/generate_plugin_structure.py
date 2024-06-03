@@ -51,6 +51,7 @@ def new_plugin(name_of_the_signal: str, name_of_the_cli_command: str, out_dir: p
         f.write(rendered_template)
     with open(out_dir_pkj / "src" / f"fextract_{name_of_the_signal}" / "plugin.py", "w") as f:
         f.write(rendered_plugin_template)
+    shutil.copy2(path_template_folder / "requirements.txt", out_dir_pkj / "requirements.txt")
 
 
 if __name__ == "__main__":

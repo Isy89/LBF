@@ -1,8 +1,14 @@
 from setuptools import setup, find_packages
 
+with open("requirements.txt", "r", encoding="utf-8") as f:
+    requires = []
+    for line in f:
+        req = line.split("#", 1)[0].strip()
+        requires.append(req)
+
 setup(
     name="fextract_{{ name_of_the_signal }}",
-    #install_requires="lbfextract",
+    install_requires=requires,
     entry_points={"lbfextract": [
         "{{ name_of_the_signal }} = fextract_{{ name_of_the_signal }}.plugin:hook"
     ],
