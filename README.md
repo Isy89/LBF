@@ -48,6 +48,7 @@ The following feature extraction methods are available:
 ## LBF plugins
 
 - [jsd_to_flanking](https://github.com/Isy89/fextract_jsd_to_flanking)
+- [cool_signal_name](https://github.com/Isy89/fextract_cool_signal_name) (plugin example discussed in the [documentation](https://lbf.readthedocs.io/en/latest/plugins.html))
 
 ## Installation
 
