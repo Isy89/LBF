@@ -48,4 +48,8 @@ def reads(app):
 
 @pytest.fixture
 def signal(app, reads):
-    return app.extract_signal(reads)
+    transformed_reads = app.transform_reads(reads)
+    signal_single_interval = app.transform_signal_single_interval(transformed_reads)
+    all_single_interval_signals_transformed = app.transform_all_single_interval_signals(signal_single_interval)
+    return all_single_interval_signals_transformed
+

@@ -23,7 +23,9 @@ class TestCore:
 
     @pytest.mark.dependency(depends=['TestCore::test_App_fetch_reads'])
     def test_App_extract_signal(self, app, reads):
-        signal = app.extract_signal(reads)
+        transformed_reads = app.transform_reads(reads)
+        signal_single_interval = app.transform_signal_single_interval(transformed_reads)
+        all_single_interval_signals_transformed = app.transform_all_single_interval_signals(signal_single_interval)
 
     @pytest.mark.dependency(depends=['TestCore::test_App_extract_signal'])
     def test_App_save_signal(self, app, signal):
