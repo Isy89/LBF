@@ -35,10 +35,12 @@ def calculate_reference_distribution(path_to_sample, min_length, max_length, chr
 
     return array_fragment_lengths / array_fragment_lengths.sum()
 
+
 def get_peaks(distribution, height=0.0001, distance=100):
     distribution = savgol_filter(distribution, 10, 3)
     peaks = scipy.signal.find_peaks(distribution, height=height, distance=distance)[0]
     return peaks
+
 
 def subsample_fragment_lengths(x, n):
     new_x = np.zeros_like(x)
@@ -137,9 +139,10 @@ class FextractHooks:
                 tensor += fld_extractor(interval)
 
         if config.n_bins_pos:
-            tensor = np.hstack(map(lambda x: x.sum(axis=1)[:, None], np.array_split(tensor, config.n_bins_pos, axis=1)))
+            tensor = np.hstack(
+                list(map(lambda x: x.sum(axis=1)[:, None], np.array_split(tensor, config.n_bins_pos, axis=1))))
         if config.n_bins_len:
-            tensor = np.vstack(map(lambda x: x.sum(axis=0), np.array_split(tensor, config.n_bins_len, axis=0)))
+            tensor = np.vstack(list(map(lambda x: x.sum(axis=0), np.array_split(tensor, config.n_bins_len, axis=0))))
         if config.subsample:
             n = config.n or int(tensor.sum(axis=0).min())
             tensor = np.apply_along_axis(
@@ -218,6 +221,7 @@ class CliHook:
         Where :math:`l` represents the genomic position, :math:`f` represents a fragment, :math:`p_e` represent the maximum fragment length
         and :math:`p_s` represents the minimum fragment length
     """
+
     @lbfextract.hookimpl_cli
     def get_command(self) -> click.Command:
         @click.command()
@@ -294,10 +298,10 @@ class CliHook:
                                         case_sensitive=False),
                       show_default=True, default="fld",
                       help="type of fragment length distribution to be extracted")
-        @click.option("--read_start", default=53, type=int, show_default=True, 
-                        help="start of the read to be used to extract coverage")
+        @click.option("--read_start", default=53, type=int, show_default=True,
+                      help="start of the read to be used to extract coverage")
         @click.option("--read_end", default=113, type=int, show_default=True,
-                        help="end of the read to be used to extract coverage")
+                      help="end of the read to be used to extract coverage")
         def extract_fragment_length_distribution(
                 path_to_bam: pathlib.Path, path_to_bed: pathlib.Path,
                 output_path: pathlib.Path,
@@ -320,7 +324,6 @@ class CliHook:
                 read_end: int,
                 flip_based_on_strand: bool = False,
                 gc_correction_tag: Optional[str] = None,
-
 
         ):
             """
@@ -353,12 +356,12 @@ class CliHook:
                 single_signal_transformer_config["w"] = w
             if fld_type == "fld_dyad":
                 distribution = calculate_reference_distribution(path_to_sample=path_to_bam,
-                                                 min_length=min_fragment_length,
-                                                 max_length=max_fragment_length,
-                                                 chr = "chr12",
-                                                 start=34_300_000,
-                                                 end = 34_500_000
-                )
+                                                                min_length=min_fragment_length,
+                                                                max_length=max_fragment_length,
+                                                                chr="chr12",
+                                                                start=34_300_000,
+                                                                end=34_500_000
+                                                                )
                 peaks = get_peaks(distribution) + min_fragment_length
                 single_signal_transformer_config["peaks"] = [peaks[0]]
             plot_signal_config = {}

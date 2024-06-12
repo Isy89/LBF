@@ -97,7 +97,7 @@ class FextractHooks:
         output_dir.mkdir(parents=True, exist_ok=True)
         (
             reads_per_interval_container[["Chromosome", "Start", "End"]]
-                .to_csv(
+            .to_csv(
                 output_dir / f"{sample}_fetched_reads.bed",
                 sep="\t",
                 header=False,
@@ -218,9 +218,12 @@ class FextractHooks:
             )
         )
 
+        normalized_array = np.zeros_like(single_intervals_transformed_reads.array)
         means_flanking = single_intervals_transformed_reads.array[:, index_flanking].mean(axis=1)
-        normalized_array = single_intervals_transformed_reads.array / means_flanking[:, None]
+        mask = means_flanking != 0
+        normalized_array[mask, :] = single_intervals_transformed_reads.array[mask, :] / means_flanking[mask, None]
         array = summary_method[config.summarization_method](normalized_array, axis=0)
+
         return Signal(
             array=array,
             metadata=None,

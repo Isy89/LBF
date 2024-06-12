@@ -31,6 +31,7 @@ Welcome to LBFextract's documentation!
    get_started
    examples
    differential_TF_activity_analysis
+   tutorial
    plugins
    contributing
 

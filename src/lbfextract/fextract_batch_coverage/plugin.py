@@ -11,20 +11,20 @@ import numpy as np
 import pandas as pd
 import pyranges
 import pysam
-from lbfextract.fextract.cli_lib import calculate_reference_distribution, get_peaks
 
 import lbfextract.fextract
 import lbfextract.fextract.signal_transformer
 from lbfextract.core import App
+from lbfextract.fextract.cli_lib import calculate_reference_distribution, get_peaks
 from lbfextract.fextract.schemas import AppExtraConfig, Config, SingleSignalTransformerConfig, ReadFetcherConfig, \
     SignalSummarizer
-from lbfextract.utils import load_temporary_bed_file, filter_bam, get_tmp_fextract_file_name, generate_time_stamp, \
-    check_input_bed, check_input_bam, filter_out_empty_bed_files
-from lbfextract.utils_classes import Signal
 from lbfextract.fextract_batch_coverage.schemas import PlotConfig
 from lbfextract.plotting_lib.plotting_functions import plot_heatmap_kde_amplitude, correlation_map_plot, \
     plot_signal_batch, \
     plot_signal
+from lbfextract.utils import load_temporary_bed_file, filter_bam, get_tmp_fextract_file_name, generate_time_stamp, \
+    check_input_bed, check_input_bam, filter_out_empty_bed_files
+from lbfextract.utils_classes import Signal
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +89,9 @@ class IntervalIterator:
             )
 
             means_flanking = array[:, index_flanking].mean(axis=1)
-            # array divided by means_flanking where not zero otherwise 0
-            normalized_array = np.where(means_flanking[:, None] != 0, array / means_flanking[:, None], 0)
+            mask = means_flanking != 0
+            normalized_array = np.zeros_like(array, dtype=float)
+            normalized_array[mask] = array[mask] / means_flanking[mask, None]
 
             return {key: self.signal_summarizer(normalized_array, axis=0)}
         else:

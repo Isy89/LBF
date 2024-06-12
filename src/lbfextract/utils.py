@@ -180,7 +180,8 @@ def get_tmp_fextract_file_name(run_id) -> pathlib.Path:
 @Tracer(debug=lbfextract.PROFILER_DEBUG, logger=logger)
 def filter_bam(in_bam: pathlib.Path,
                bed: pathlib.Path,
-               cores: int = None, overwrite=True,
+               cores: int = None,
+               overwrite=True,
                run_id: str | None = None,
                f: int = 2,
                F: int = 3868):
@@ -194,7 +195,7 @@ def filter_bam(in_bam: pathlib.Path,
 
     logger.debug(f"path_to_tmp_file: {path_to_tmp_file}")
 
-    samtools_view_cmd = (f"{lbfextract.PATH_TO_SAMTOOLS} view -b -h -F {F} -f {f} -L {bed} "
+    samtools_view_cmd = (f"{lbfextract.PATH_TO_SAMTOOLS} view -b -h -F {F} -f {f} --region-file {bed} "
                          f"-@ {view_cores} {in_bam}")
     samtools_sort_command = (f"{lbfextract.PATH_TO_SAMTOOLS} sort -@ {sort_cores} "
                              f"-o {path_to_tmp_file.with_suffix('.sorted.bam')} -")

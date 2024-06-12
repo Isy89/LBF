@@ -39,15 +39,16 @@ import pickle
 from typing import Optional, Union, List
 
 import click
-import yaml
-import pysam
 import numpy as np
+import pysam
 import scipy
+import yaml
 from scipy.signal import savgol_filter
 
 import lbfextract.fextract
 from lbfextract.core import App
-from lbfextract.fextract.schemas import Config, AppExtraConfig, SignalSummarizer, SingleSignalTransformerConfig, ReadFetcherConfig
+from lbfextract.fextract.schemas import Config, AppExtraConfig, SignalSummarizer, SingleSignalTransformerConfig, \
+    ReadFetcherConfig
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -250,6 +251,7 @@ class CliHookExtractCoverage:
             methods provided: mean, median, max, min, skip. In case skip is selected then, no summary is generated and the 
             coverage value at each position for all genomic intervals is reported.
             """
+
             read_fetcher_config = {
                 "window": window,
                 "flanking_region_window": flanking_window,
@@ -494,7 +496,6 @@ class CliHookExtractCoverage:
                                    exp_id: Optional[str],
                                    flip_based_on_strand: bool,
                                    gc_correction_tag: Optional[str]):
-
             """
             Given a set of genomic intervals having the same length w this feature extraction method extracts the 
             fragment coverage around nucleosomes dyads. To achieve this, it models from which poly-nucleosomal structure
@@ -622,7 +623,6 @@ class CliHookExtractCoverage:
                                           exp_id: Optional[str],
                                           flip_based_on_strand: bool,
                                           gc_correction_tag: Optional[str]):
-
             """
             This command extracts the middle point coverage at each position for all provided genomic intervals having 
             the same length. This can be summarized with the following methods: mean, median, max, min, skip. In case skip 
@@ -744,7 +744,6 @@ class CliHookExtractCoverage:
                                              flip_based_on_strand: bool,
                                              gc_correction_tag: Optional[str]
                                              ):
-
             """
              This command extracts the middle n points coverage at each position for all provided genomic intervals having 
              the same length. This can be summarized with the following methods: mean, median, max, min, skip. In case skip
