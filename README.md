@@ -45,6 +45,11 @@ The following feature extraction methods are available:
 - relative-entropy-to-flanking-in-batch
 - extract-signal
 
+## LBF plugins
+
+- [jsd_to_flanking](https://github.com/Isy89/fextract_jsd_to_flanking)
+- [cool_signal_name](https://github.com/Isy89/fextract_cool_signal_name) (plugin example discussed in the [documentation](https://lbf.readthedocs.io/en/latest/plugins.html))
+
 ## Installation
 
 For the installation of LBFextract, the following is required:
