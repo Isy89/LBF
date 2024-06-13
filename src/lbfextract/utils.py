@@ -197,7 +197,7 @@ def filter_bam(in_bam: pathlib.Path,
 
     samtools_view_cmd = (f"{lbfextract.PATH_TO_SAMTOOLS} view -b -h -F {F} -f {f} --region-file {bed} "
                          f"-@ {view_cores} {in_bam}")
-    samtools_sort_command = (f"{lbfextract.PATH_TO_SAMTOOLS} sort -@ {sort_cores} "
+    samtools_sort_command = (f"{lbfextract.PATH_TO_SAMTOOLS} sort -@ {sort_cores} -T {temp_dir} "
                              f"-o {path_to_tmp_file.with_suffix('.sorted.bam')} -")
 
     logger.debug(f"running \n {samtools_view_cmd + '|' + samtools_sort_command}")

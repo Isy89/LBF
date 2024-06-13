@@ -176,7 +176,7 @@ and returns a list with the Signal object and the plot figure generated.
 .. warning::
 
     LBFextract automatically fetch the temporary directory depending on the operating system. 
-    If neither of the following variable is set: FRAGMETOMICS_TMP ("LBFextract specific tmp folder"), TEMPDIR, TEMP, TMP, 
+    If neither of the following variable is set: FRAGMENTOMICS_TMP ("LBFextract specific tmp folder"), TEMPDIR, TEMP, TMP, 
     the package will use the system `/tmp`.
 
 
