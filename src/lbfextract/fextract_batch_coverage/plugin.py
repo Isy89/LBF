@@ -878,9 +878,6 @@ class CliHook:
                       show_default=True,
                       default=False,
                       help="flip the signal based on the strand")
-        @click.option("--flip_based_on_strand", is_flag=True, show_default=False,
-                      default=False,
-                      help="Boolean flag. When it is set, the signal is flipped based on the strand")
         @click.option('--gc_correction_tag', type=str,
                       default=None, help='tag to be used to extract gc coefficient per read from a bam file')
         def extract_sliding_window_coverage_in_batch(path_to_bam: pathlib.Path, path_to_bed: pathlib.Path,
@@ -948,25 +945,3 @@ class CliHook:
 
 hook = FextractHooks()
 hook_cli = CliHook()
-
-if __name__ == "__main__":
-    reads = FextractHooks().fetch_reads(
-        path_to_bam=pathlib.Path("/media/isy/ISY_PC_2T/github/LBFextract/tests/test_bams/C344_test.bam"),
-        path_to_bed=pathlib.Path("/media/isy/ISY_PC_2T/github/LBFextract/tests/test_bed/"),
-        config=ReadFetcherConfig({"extra_bases": 1000,
-                                  "flanking_region_window": 1000,
-                                  "n_binding_sites": 1000,
-                                  "window": 1000}),
-        extra_config=AppExtraConfig({"cores": 14}),
-    )
-    transform_single_intervals = FextractHooks().transform_single_intervals(
-        transformed_reads=reads,
-        config=SingleSignalTransformerConfig({"signal_transformer": "coverage"}),
-        extra_config=AppExtraConfig({}),
-    )
-    transform_all_intervals = FextractHooks().transform_all_intervals(
-        single_intervals_transformed_reads=transform_single_intervals,
-        config=SignalSummarizer({"summarization_method": "mean"}),
-        extra_config=AppExtraConfig({}),
-    )
-    print(transform_all_intervals)
