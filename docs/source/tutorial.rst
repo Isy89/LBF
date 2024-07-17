@@ -133,7 +133,7 @@ To extract coverage for CTCF, the following command can be run:
 
     lbfextract feature_extraction_commands extract-coverage \
     --path_to_bam "tests/test_dataset/bam/fextract_anonymized_test.bam" \
-    --path_to_bed "tests/test_dataset/multi_bed_ar_ctcf_for_dyads/CTCF.sorted.gtrd_version_21_12.1000_sites.hg38.bed"\
+    --path_to_bed "tests/test_dataset/multi_bed_ar_ctcf_for_dyads/CTCF.sorted.gtrd_version_21_12.1000_sites.hg38.bed" \
     --output_path "tests/test_out/test_cli" \
     --summarization_method mean \
     --cores 4

@@ -177,11 +177,9 @@ class FextractHooks:
         signal_type = "_".join(signal.tags) if signal.tags else ""
         start_pos = extra_config.ctx["single_signal_transformer_config"].min_fragment_length
         end_pos = signal.array.shape[0] + start_pos
-
-        fig = plot_fragment_length_distribution(signal.array, start_pos, end_pos)
         sample_name = extra_config.ctx["path_to_bam"].stem
         interval_name = extra_config.ctx["path_to_bed"].stem.split(".", 1)[0]
-        fig.suptitle(f"{sample_name} {signal_type} {interval_name}")
+        fig = plot_fragment_length_distribution(signal.array, start_pos, end_pos, title=f"{sample_name} {signal_type} {interval_name}")
         output_path = extra_config.ctx["output_path"] / f"{time_stamp}__{run_id}__{signal_type}__heatmap.png"
         fig.savefig(output_path, dpi=300)
 

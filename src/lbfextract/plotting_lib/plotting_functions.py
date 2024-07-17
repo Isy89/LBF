@@ -352,26 +352,50 @@ def create_heatmap_bed_per_position(df, fig=None, ax=None, title="", ylabel=None
     return fig, ax
 
 
-def plot_fragment_length_distribution(array: np.array, start_pos: int, end_pos: int):
-    fig = plt.figure(constrained_layout=True, figsize=(15, 5))
-    gs = fig.add_gridspec(4, 7)
-    ax_heatmap = fig.add_subplot(gs[0:3, 0:])
-    axs_distr_plots = [fig.add_subplot(gs[3, i]) for i in range(7)]
+def plot_fragment_length_distribution(array: np.array, start_pos: int, end_pos: int, title="FLD per position"):
+    general_font_size = 15
+    small_font_size = 12
+    fig = plt.figure(constrained_layout=True, figsize=(15, 10))
+    fig.suptitle(title, ha="center", fontsize=30)
+    gs = fig.add_gridspec(10, 7)
+    ax_heatmap = fig.add_subplot(gs[3:10, 0:])
+    axs_distr_plots = [fig.add_subplot(gs[1:3, i]) for i in range(7)]
 
     df = pd.DataFrame(array, index=range(start_pos, end_pos))
-    seaborn.heatmap(df, ax=ax_heatmap, rasterized=True)
-
-    labels = [int(i.get_text()) - int(df.shape[1] / 2) for i in ax_heatmap.get_xticklabels()]
-    ax_heatmap.set_xticklabels(labels)
+    seaborn.heatmap(df, ax=ax_heatmap, rasterized=True, cbar_kws={"orientation": "horizontal"})
+    ax_heatmap.set_yticks([0, array.shape[0] // 2, array.shape[0]], [start_pos, (end_pos - start_pos) // 2, end_pos],
+                          fontsize=general_font_size)
+    ax_heatmap.set_xticks([0, array.shape[-1] // 2, array.shape[-1]], [-array.shape[-1] // 2, 0, +array.shape[-1] // 2],
+                          fontsize=general_font_size)
+    ax_heatmap.set_xlabel("Position around genomic interval center", fontsize=20)
+    ax_heatmap.set_ylabel("Fragment Length Distribution", fontsize=20)
     min_, max_ = [], []
     for count, i in enumerate(np.array_split(array, 7, axis=1)):
         mean_ax_1 = i.mean(axis=1)
         axs_distr_plots[count].plot(range(start_pos, end_pos), mean_ax_1)
+
         axs_distr_plots[count].grid()
         max_ += [mean_ax_1.max()]
         min_ += [mean_ax_1.min()]
+    pos = 0
     for count, i in enumerate(np.array_split(array, 7, axis=1)):
+        if count == 3:
+            axs_distr_plots[count].set_xlabel("fragment length", fontsize=small_font_size)
+        if count == 0:
+            axs_distr_plots[count].set_ylabel("density", fontsize=small_font_size)
+
+        next_pos = pos + i.shape[1]
         axs_distr_plots[count].set_ylim((min(min_), max(max_)))
+        axs_distr_plots[count].set_xticks([start_pos, end_pos],
+                                          [start_pos, end_pos],
+                                          fontsize=small_font_size)
+        y_ticks = axs_distr_plots[count].get_yticks()
+        y_ticks_labels = axs_distr_plots[count].get_yticklabels()
+        axs_distr_plots[count].set_yticks([y_ticks[0], y_ticks[-2]],
+                                          [y_ticks_labels[0], y_ticks_labels[-2]],
+                                          fontsize=small_font_size)
+        axs_distr_plots[count].set_title(f"\u03BCFLD: [{pos - 2000}, {next_pos - 2000})", fontsize=small_font_size)
+        pos = next_pos
     return fig
 
 
