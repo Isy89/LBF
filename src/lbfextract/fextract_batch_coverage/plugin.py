@@ -6,11 +6,11 @@ from typing import Any, Union, List, Optional
 
 import click
 import dill as pickle
-import matplotlib.figure
 import numpy as np
 import pandas as pd
 import pyranges
 import pysam
+from matplotlib import pyplot as plt
 
 import lbfextract.fextract
 import lbfextract.fextract.signal_transformer
@@ -19,11 +19,10 @@ from lbfextract.fextract.cli_lib import calculate_reference_distribution, get_pe
 from lbfextract.fextract.schemas import AppExtraConfig, Config, SingleSignalTransformerConfig, ReadFetcherConfig, \
     SignalSummarizer
 from lbfextract.fextract_batch_coverage.schemas import PlotConfig
-from lbfextract.plotting_lib.plotting_functions import plot_heatmap_kde_amplitude, correlation_map_plot, \
-    plot_signal_batch, \
+from lbfextract.plotting_lib.plotting_functions import plot_heatmap_kde_amplitude, plot_signal_batch, \
     plot_signal
 from lbfextract.utils import load_temporary_bed_file, filter_bam, get_tmp_fextract_file_name, generate_time_stamp, \
-    check_input_bed, check_input_bam, filter_out_empty_bed_files
+    check_input_bed, check_input_bam, filter_out_empty_bed_files, sanitize_file_name
 from lbfextract.utils_classes import Signal
 
 logger = logging.getLogger(__name__)
@@ -52,6 +51,7 @@ class IntervalIterator:
         self.signal_summarizer = identity
         self.flanking_window = flanking_window
         self.flip_based_on_strand = flip_based_on_strand
+        self.bamfile = pysam.AlignmentFile(self.path_to_bam)
 
     def __iter__(self):
         return self
@@ -62,30 +62,43 @@ class IntervalIterator:
     def set_signal_summarizer(self, signal_summarizer):
         self.signal_summarizer = signal_summarizer
 
+    def __getstate__(self):
+        # Return the state that can be pickled
+        state = self.__dict__.copy()
+        state["bamfile"] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.path_to_bam = pysam.AlignmentFile(state['path_to_bam'])
+
     def __next__(self):
         if self._index < len(self.sequence):
             key = self.sequence[self._index]
-            bamfile = pysam.AlignmentFile(self.path_to_bam)
             df = self.df_by_name.get_group(key).copy()
-            df["reads_per_interval"] = df.apply(
-                lambda x: bamfile.fetch(x["Chromosome"], x["Start"], x["End"], multiple_iterators=True),
-                axis=1
-            )
-            df.loc[:, "Start"] = df.Start + self.extra_bases
-            df.loc[:, "End"] = df.End - self.extra_bases
+            df["reads_per_interval"] = [
+                self.bamfile.fetch(row.Chromosome, row.Start, row.End, multiple_iterators=False)
+                for row in df.itertuples()
+            ]
 
-            array = np.vstack(
-                df.apply(lambda x: self.signal_transformer(x), axis=1)
-            )
+            df["Start"] += self.extra_bases
+            df["End"] -= self.extra_bases
+
+            array = np.vstack([
+                self.signal_transformer(row) for row in df.itertuples()
+            ])
 
             if self.flip_based_on_strand:
-                array[df["Strand"] == "-", :] = np.fliplr(array[df["Strand"] == "-"])
+                strands = df["Strand"].values
+                flip_mask = strands == "-"
+                array[flip_mask] = np.fliplr(array[flip_mask])
 
             self._index += 1
 
+            indices = np.arange(array.shape[1])
             index_flanking = np.logical_or(
-                np.arange(array.shape[1]) < self.flanking_window,
-                np.arange(array.shape[1]) > (array.shape[1] - self.flanking_window)
+                indices < self.flanking_window,
+                indices > (array.shape[1] - self.flanking_window)
             )
 
             means_flanking = array[:, index_flanking].mean(axis=1)
@@ -136,8 +149,8 @@ class FextractHooks:
         pyranges.PyRanges(concat_bed).to_csv(path_to_tmp_file, sep="\t", header=None)
 
         tmp_bam_file = filter_bam(path_to_bam, path_to_tmp_file, cores=extra_config.cores,
-                                  run_id=extra_config.ctx["run_id"]
-                                  , f=config_f, F=config_F)
+                                  run_id=extra_config.ctx["run_id"],
+                                  f=config_f, F=config_F)
 
         return IntervalIterator(concat_bed, tmp_bam_file,
                                 multiple_iterators=True,
@@ -153,6 +166,7 @@ class FextractHooks:
         Hook implementing the strategy to save the reads fetched from the intervals
         :param reads_per_interval_container: ReadsPerIntervalContainer containing information about the genomic region
             and the reads mapping to it
+        :param config: object contaiing the configuration for saving the reads
         :param extra_config: extra configuration that may be used in the hook implementation
         :return: None
         """
@@ -264,20 +278,23 @@ class FextractHooks:
         )
 
     @lbfextract.hookimpl
-    def plot_signal(self, signal: Signal,
+    def plot_signal(self,
+                    signal: Signal,
                     config: PlotConfig,
-                    extra_config: Any) -> matplotlib.figure.Figure:
+                    extra_config: Any) -> dict[str, pathlib.Path]:
         """
         :param signal: Signal object containing the signals per interval
+        :param config: object containing the parameters of the plot
         :param extra_config: extra configuration that may be used in the hook implementation
         """
+        fig_pths = {}
         df = pd.DataFrame(signal.array, index=signal.metadata)
         flanking = int((df.shape[1] // 5) * 2) if not config.flanking else config.flanking
-        fig, ax = plot_heatmap_kde_amplitude(
+        fig_plot_heatmap_kde_amplitude, ax = plot_heatmap_kde_amplitude(
             array=df,
-            title=" ".join(signal.tags),
-            title_font_size=config.title_font_size if config.title_font_size else 20,
-            general_font_size=config.general_font_size if config.general_font_size else 15,
+            title=" ".join(signal.tags).capitalize(),
+            title_font_size=config.title_font_size if config.title_font_size else 25,
+            general_font_size=config.general_font_size if config.general_font_size else 20,
             tf_to_annotate=config.tf_to_annotate if config.tf_to_annotate else None,
             ylabel=config.ylabel if config.ylabel else None,
             flanking=flanking,
@@ -285,24 +302,24 @@ class FextractHooks:
             window_center=config.window_center if config.window_center else 50,
             top=config.top if config.top else 5,
             bottom=config.bottom if config.bottom else 5,
-
         )
         signal_type = "_".join(signal.tags)
         time_stamp = generate_time_stamp()
         run_id = extra_config.ctx["id"]
-        output_path = extra_config.ctx[
-                          "output_path"] / f"{time_stamp}__{run_id}__{signal_type}__heatmap_kde_amplitude_plot.png"
-        fig.savefig(output_path)
-        fig = correlation_map_plot(df)
-        output_path = extra_config.ctx["output_path"] / f"{time_stamp}__{run_id}__{signal_type}__corr_matrix.png"
-        fig.savefig(output_path)
-        fig, ax = plot_signal_batch(
+        file_name = f"{time_stamp}__{run_id}__{signal_type}__heatmap_kde_amplitude_plot.png"
+        file_name_sanitized = sanitize_file_name(file_name)
+        output_path = extra_config.ctx["output_path"] / file_name_sanitized
+        fig_plot_heatmap_kde_amplitude.savefig(output_path, dpi=300)
+        fig_pths["plot_heatmap_kde_amplitude"] = output_path
+        plt.close(fig_plot_heatmap_kde_amplitude)
+
+        fig_plot_signal_batch, ax = plot_signal_batch(
             df,
             apply_savgol=config.apply_savgol if config.apply_savgol else False,
             savgol_window_length=config.savgol_window_length if config.apply_savgol else 11,
             savgol_polyorder=config.savgol_polyorder if config.apply_savgol else 3,
             signal=signal_type,
-            title=f"{signal_type} all intervals",
+            title=f"{signal_type} all intervals".capitalize(),
             color=config.color if config.color else "blue",
             label=f"{signal_type} signal summary",
             flanking=flanking,
@@ -311,16 +328,25 @@ class FextractHooks:
             top=config.top if config.top else 5,
             bottom=config.bottom if config.bottom else 5,
         )
-        output_path = extra_config.ctx["output_path"] / f"{time_stamp}__{run_id}__{signal_type}__batch_signals.png"
-        fig.savefig(output_path)
+        file_name = f"{time_stamp}__{run_id}__{signal_type}__batch_signals.png"
+        file_name_sanitized = sanitize_file_name(file_name)
+        output_path = extra_config.ctx["output_path"] / file_name_sanitized
+        fig_plot_signal_batch.savefig(output_path, dpi=300)
+        fig_pths["plot_signal_batch"] = output_path
+        plt.close(fig_plot_signal_batch)
+
         for i in range(df.shape[0]):
-            fig, ax = plot_signal(df.iloc[i, :].values,
-                                  label="center",
-                                  title=f"{signal_type} interval {df.index[i]}")
-            output_path = extra_config.ctx[
-                              "output_path"] / f"{time_stamp}__{run_id}__{signal_type}__{i}__signal_{df.index[i].replace('/', '_')}.png"
-            fig.savefig(output_path)
-        return fig
+            file_name = f"{time_stamp}__{run_id}__{signal_type}__{df.index[i]}__signal.png"
+            file_name_sanitized = sanitize_file_name(file_name)
+            fig_plot_signal, ax = plot_signal(df.iloc[i, :].values,
+                                              label="center",
+                                              title=f"{signal_type} interval {df.index[i]}".capitalize())
+            output_path = extra_config.ctx["output_path"] / file_name_sanitized
+            fig_plot_signal.savefig(output_path, dpi=300)
+            fig_pths[i] = output_path
+            plt.close(fig_plot_signal)
+
+        return fig_pths
 
     @lbfextract.hookimpl
     def save_signal(self,
@@ -336,7 +362,9 @@ class FextractHooks:
         time_stamp = generate_time_stamp()
         run_id = extra_config.ctx["id"]
         signal_type = "_".join(signal.tags)
-        file_path = output_path / f"{time_stamp}__{run_id}__{signal_type}__signal.csv"
+        file_name = f"{time_stamp}__{run_id}__{signal_type}__signal.csv"
+        file_name_sanitized = sanitize_file_name(file_name)
+        file_path = output_path / file_name_sanitized
         logging.info(f"Saving signal to {file_path}")
         df = pd.DataFrame(signal.array, index=signal.metadata)
         pd.DataFrame(df).to_csv(file_path)
@@ -418,7 +446,7 @@ class CliHook:
                                       gc_correction_tag: Optional[str] = None
                                       ):
             """
-            extract_coverage_in_batch extracts the fragment coverage from multiple BED files at once and generates 
+            extract_coverage_in_batch extracts the fragment coverage from multiple BED files at once and generates
             a signal for each BED file provided.
             """
             read_fetcher_config = {
@@ -451,7 +479,7 @@ class CliHook:
                       output_path=output_path_interval_spec or pathlib.Path.cwd(),
                       skip_read_fetching=skip_read_fetching,
                       read_fetcher_config=ReadFetcherConfig(read_fetcher_config),
-                      reads_transformer_config=reads_transformer_config,
+                      reads_transformer_config=Config(reads_transformer_config),
                       single_signal_transformer_config=SingleSignalTransformerConfig(single_signal_transformer_config),
                       transform_all_intervals_config=SignalSummarizer(transform_all_intervals_config),
                       plot_signal_config=PlotConfig(plot_signal_config),
@@ -535,7 +563,7 @@ class CliHook:
                                                    gc_correction_tag: Optional[str] = None
                                                    ):
             """
-            extract_coverage_around_dyads_in_batch extracts the fragment coverage around dyads from multiple BED files 
+            extract_coverage_around_dyads_in_batch extracts the fragment coverage around dyads from multiple BED files
             at once and generates a signal for each BED file provided.
             """
             read_fetcher_config = {
@@ -579,7 +607,7 @@ class CliHook:
                       output_path=output_path_interval_spec or pathlib.Path.cwd(),
                       skip_read_fetching=skip_read_fetching,
                       read_fetcher_config=ReadFetcherConfig(read_fetcher_config),
-                      reads_transformer_config=reads_transformer_config,
+                      reads_transformer_config=Config(reads_transformer_config),
                       single_signal_transformer_config=SingleSignalTransformerConfig(single_signal_transformer_config),
                       transform_all_intervals_config=SignalSummarizer(transform_all_intervals_config),
                       plot_signal_config=PlotConfig(plot_signal_config),
@@ -660,8 +688,8 @@ class CliHook:
                                                    gc_correction_tag: Optional[str] = None
                                                    ):
             """
-            extract_middle_point_coverage_in_batch extracts the fragment coverage considering only the central position of
-            each read from multiple BED files at once and generates a signal for each BED file provided.
+            extract_middle_point_coverage_in_batch extracts the fragment coverage considering only the central position
+            of each read from multiple BED files at once and generates a signal for each BED file provided.
             """
             read_fetcher_config = {
                 "window": window,
@@ -693,7 +721,7 @@ class CliHook:
                       output_path=output_path_interval_spec or pathlib.Path.cwd(),
                       skip_read_fetching=skip_read_fetching,
                       read_fetcher_config=ReadFetcherConfig(read_fetcher_config),
-                      reads_transformer_config=reads_transformer_config,
+                      reads_transformer_config=Config(reads_transformer_config),
                       single_signal_transformer_config=SingleSignalTransformerConfig(single_signal_transformer_config),
                       transform_all_intervals_config=SignalSummarizer(transform_all_intervals_config),
                       plot_signal_config=PlotConfig(plot_signal_config),
@@ -776,8 +804,8 @@ class CliHook:
                                                       flip_based_on_strand: bool = True,
                                                       gc_correction_tag: Optional[str] = None):
             """
-            extract_middle_n_points_coverage_in_batch extracts the fragment coverage considering only the central positions 
-            of each read from multiple BED files at once and generates a signal for each BED file provided.
+            extract_middle_n_points_coverage_in_batch extracts the fragment coverage considering only the central
+            positions of each read from multiple BED files at once and generates a signal for each BED file provided.
             """
             read_fetcher_config = {
                 "window": window,
@@ -810,7 +838,7 @@ class CliHook:
                       output_path=output_path_interval_spec or pathlib.Path.cwd(),
                       skip_read_fetching=skip_read_fetching,
                       read_fetcher_config=ReadFetcherConfig(read_fetcher_config),
-                      reads_transformer_config=reads_transformer_config,
+                      reads_transformer_config=Config(reads_transformer_config),
                       single_signal_transformer_config=SingleSignalTransformerConfig(single_signal_transformer_config),
                       transform_all_intervals_config=SignalSummarizer(transform_all_intervals_config),
                       plot_signal_config=PlotConfig(plot_signal_config),
@@ -894,8 +922,9 @@ class CliHook:
                                                      flip_based_on_strand: bool = True,
                                                      gc_correction_tag: Optional[str] = None):
             """
-            extract_sliding_window_coverage_in_batch extracts the fragment coverage using a sliding window aproach to 
-            reduce the problems encounterd when using low coverage samples and generates a signal for each BED file provided.
+            extract_sliding_window_coverage_in_batch extracts the fragment coverage using a sliding window approach to
+            reduce the problems encountered when using low coverage samples and generates a signal for each BED provided
+            file.
             """
             read_fetcher_config = {
                 "window": window,
@@ -928,7 +957,7 @@ class CliHook:
                       output_path=output_path_interval_spec or pathlib.Path.cwd(),
                       skip_read_fetching=skip_read_fetching,
                       read_fetcher_config=ReadFetcherConfig(read_fetcher_config),
-                      reads_transformer_config=reads_transformer_config,
+                      reads_transformer_config=Config(reads_transformer_config),
                       single_signal_transformer_config=SingleSignalTransformerConfig(single_signal_transformer_config),
                       transform_all_intervals_config=SignalSummarizer(transform_all_intervals_config),
                       plot_signal_config=PlotConfig(plot_signal_config),

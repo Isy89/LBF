@@ -11,11 +11,11 @@ class TFBSCoverage:
         self.tag = tag
 
     def __call__(self, x: pd.Series):
-        start = x["Start"]
-        end = x["End"]
+        start = x.Start
+        end = x.End
         region_length = end - start
         tensor = np.zeros(region_length)
-        for read in x["reads_per_interval"]:
+        for read in x.reads_per_interval:
             gc_coef = read.get_tag(self.tag) if self.gc_correction and read.has_tag(self.tag) else 1
             relative_start = read.pos - start
 
@@ -81,11 +81,11 @@ class TFBSMiddlePointCoverage:
         self.tag = tag
 
     def __call__(self, x: pd.Series):
-        start = x["Start"]
-        end = x["End"]
+        start = x.Start
+        end = x.End
         region_length = end - start
         tensor = np.zeros(region_length)
-        for read in x["reads_per_interval"]:
+        for read in x.reads_per_interval:
             gc_coef = read.get_tag(self.tag) if self.gc_correction and read.has_tag(self.tag) else 1
             relative_start = read.pos - start
             middle_point = relative_start + (read.template_length // 2)
@@ -103,11 +103,11 @@ class TFBSNmiddlePointCoverage:
         self.tag = tag
 
     def __call__(self, x: pd.Series):
-        start = x["Start"]
-        end = x["End"]
+        start = x.Start
+        end = x.End
         region_length = end - start
         tensor = np.zeros(region_length)
-        for read in x["reads_per_interval"]:
+        for read in x.reads_per_interval:
             gc_coef = read.get_tag(self.tag) if self.gc_correction and read.has_tag(self.tag) else 1
             relative_start = read.pos - start
             middle_point = relative_start + (read.template_length // 2)
@@ -125,11 +125,11 @@ class TFBSSlidingWindowCoverage:
         self.tag = tag
 
     def __call__(self, x: pd.Series):
-        start = x["Start"]
-        end = x["End"]
+        start = x.Start
+        end = x.End
         region_length = end - start
         tensor = np.zeros(region_length)
-        for read in x["reads_per_interval"]:
+        for read in x.reads_per_interval:
             gc_coef = read.get_tag(self.tag) if self.gc_correction and read.has_tag(self.tag) else 1
             relative_start = read.pos - start
             indices = adapt_indices(relative_start, relative_start + read.template_length, region_length)
@@ -148,12 +148,12 @@ class FragmentLengthDistribution:
         self.tag = tag
 
     def __call__(self, x: pd.Series):
-        start = x["Start"]
-        end = x["End"]
+        start = x.Start
+        end = x.End
         region_length = end - start
         relative_fragment_length = self.max_fragment_length - self.min_fragment_length
         tensor = np.zeros((relative_fragment_length + 1, region_length))
-        for read in x["reads_per_interval"]:
+        for read in x.reads_per_interval:
             gc_coef = read.get_tag(self.tag) if self.gc_correction and read.has_tag(self.tag) else 1
             fragment_length = read.template_length
 
@@ -178,11 +178,11 @@ class PeterUlzCoverage:
         self.read_end = read_end
 
     def __call__(self, x: pd.Series):
-        start = x["Start"]
-        end = x["End"]
+        start = x.Start
+        end = x.End
         region_length = end - start
         tensor = np.zeros(region_length)
-        for read in x["reads_per_interval"]:
+        for read in x.reads_per_interval:
             gc_coef = read.get_tag(self.tag) if self.gc_correction and read.has_tag(self.tag) else 1
             relative_start = read.pos - start
 
@@ -214,12 +214,12 @@ class WPSCoverage(TFBSCoverage):
         return indices_start, indices_end
 
     def __call__(self, x: pd.Series):
-        start = x["Start"]
-        end = x["End"]
+        start = x.Start
+        end = x.End
         region_length = end - start
         regions_minus_one = np.zeros(region_length)
         regions_plus_one = np.zeros(region_length)
-        for read in x["reads_per_interval"]:
+        for read in x.reads_per_interval:
             if not self.min_fragment_length < read.template_length <= self.max_fragment_length:
                 continue
             gc_coef = read.get_tag(self.tag) if self.gc_correction and read.has_tag(self.tag) else 1

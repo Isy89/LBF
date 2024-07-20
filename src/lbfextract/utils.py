@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 import os
 import pathlib
+import re
 import shlex
 import subprocess
 import sys
@@ -371,3 +372,7 @@ def start_msg():
         yield Text.from_ansi(title)
 
     console.print(Panel(get_panels(), title="LBFextract", expand=True), style="green on black")
+
+
+def sanitize_file_name(file_name):
+    return re.sub(pattern=r'[<>:"/\\|?*\x00-\x1F\s]', repl='-', string=file_name)

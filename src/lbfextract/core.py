@@ -229,7 +229,8 @@ class App:
     @TimerAndMemoryProfiler(debug=lbfextract.PROFILER_DEBUG,
                             timer_logger=logger)
     @Tracer(debug=lbfextract.PROFILER_DEBUG, logger=logger)
-    def run(self) -> Tuple[Signal, matplotlib.figure.Figure | list[matplotlib.figure.Figure] | None]:
+    def run(self) -> Tuple[
+        Signal, matplotlib.figure.Figure | list[matplotlib.figure.Figure] | dict[str, pathlib.Path] | None]:
         try:
             if self.skip_read_fetching:
                 logger.info("Skipping read fetching. Loading reads from disk.")

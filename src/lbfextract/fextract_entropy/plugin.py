@@ -11,16 +11,11 @@ from matplotlib import pyplot as plt
 import lbfextract.fextract
 from lbfextract.core import App
 from lbfextract.fextract.schemas import Config, AppExtraConfig, ReadFetcherConfig
-from lbfextract.utils import generate_time_stamp
+from lbfextract.utils import generate_time_stamp, sanitize_file_name
 from lbfextract.utils_classes import Signal
 from lbfextract.plotting_lib.plotting_functions import plot_signal
 from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
 from lbfextract.fextract_fragment_length_distribution.plugin import calculate_reference_distribution, get_peaks
-
-
-def get_entropy(x):
-    return scipy.stats.entropy(x) if x.sum() > 0 else 0
-
 
 class FextractHooks:
 
@@ -34,10 +29,13 @@ class FextractHooks:
         """
         single_intervals_transformed_reads.array += 1e-10
         single_intervals_transformed_reads.array /= single_intervals_transformed_reads.array.sum(axis=0)
-        entropy = np.apply_along_axis(lambda x: scipy.stats.entropy(x),
-                                      0,
-                                      single_intervals_transformed_reads.array)
-        return Signal(array=entropy, tags=("entropy",), metadata=None)
+
+        def compute_column_entropies(array):
+            transposed_array = np.zeros_like(array.T)
+            return np.apply_along_axis(scipy.stats.entropy, 1, transposed_array)
+
+        entropy_array = compute_column_entropies(single_intervals_transformed_reads.array)
+        return Signal(array=entropy_array, tags=("entropy",), metadata=None)
 
     @lbfextract.hookimpl
     def plot_signal(self, signal: Signal,
@@ -52,10 +50,9 @@ class FextractHooks:
             fig, _ = plot_signal(signal.array, apply_savgol=False, ax=ax, fig=fig, label=signal_type)
             ax.set_ylabel(signal_type)
             ax.set_xlabel("Position")
-        fig.savefig(
-            extra_config.ctx["output_path"] /
-            f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.pdf",
-            dpi=300)
+        file_name = f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.png"
+        file_name_sanitized = sanitize_file_name(file_name)
+        fig.savefig(extra_config.ctx["output_path"] / file_name_sanitized, dpi=300)
         return fig
 
 

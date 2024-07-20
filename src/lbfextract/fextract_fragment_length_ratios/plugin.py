@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 import lbfextract.fextract
 from lbfextract.core import App
 from lbfextract.fextract.schemas import Config, AppExtraConfig, ReadFetcherConfig
-from lbfextract.utils import generate_time_stamp
+from lbfextract.utils import generate_time_stamp, sanitize_file_name
 from lbfextract.utils_classes import Signal
 from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
 from lbfextract.plotting_lib.plotting_functions import plot_signal
@@ -52,9 +52,11 @@ class FextractHooks:
             fig, _ = plot_signal(signal.array, apply_savgol=False, ax=ax, fig=fig, label=signal_type)
             ax.set_ylabel(signal_type)
             ax.set_xlabel("Position")
+
+        file_name = f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.pdf"
+        file_name_sanitized = sanitize_file_name(file_name)
         fig.savefig(
-            extra_config.ctx["output_path"] /
-            f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.pdf",
+            extra_config.ctx["output_path"] / file_name_sanitized,
             dpi=300)
         return fig
 
@@ -70,15 +72,15 @@ class CliHook:
 
         **extract_fragment_length_ratios**
 
-        Given a set of genomic intervals having the same length w, the extract_fragment_length_ratios extracts the 
-        fragment length ratios of the proportion of reads contained in two different parts of the fragment length 
+        Given a set of genomic intervals having the same length w, the extract_fragment_length_ratios extracts the
+        fragment length ratios of the proportion of reads contained in two different parts of the fragment length
         distribution at each position.
 
         .. math::
             \mathbf{c} = \left( \frac{\sum_{i \in [n,m)} \mathbf{d}^{l}_{i}}{\sum_{j \in [o, p)} \mathbf{d}^{l}_{j}} \right)^{w}_{l=0}
  
-        in which :math:`\mathbf{d}` is the fragment length distribution at position :math:`l`, :math:`n,m` the start and 
-        the end of the range of fragment lengths used in the nominator and :math:`o,p` are the start and end of the 
+        in which :math:`\mathbf{d}` is the fragment length distribution at position :math:`l`, :math:`n,m` the start and
+        the end of the range of fragment lengths used in the nominator and :math:`o,p` are the start and end of the
         range of fragment lengths used in the denominator.
     """
 
@@ -127,7 +129,7 @@ class CliHook:
                       help="Integer describing the number of bases to be extracted after the window")
         @click.option("--extra_bases", default=2000, type=int, show_default=True,
                       help="Integer describing the number of bases to be extracted from the bamfile when removing the "
-                           "unused bases to be sure to get all the proper paires, which may be mapping up to 2000 bs")
+                           "unused bases to be sure to get all the proper pairs, which may be mapping up to 2000 bs")
         @click.option("--n_binding_sites", default=1000, type=int, show_default=True,
                       help="number of intervals to be used to extract the signal, if it is higher then the provided"
                            "intervals, all the intervals will be used")
@@ -151,8 +153,8 @@ class CliHook:
         @click.option('--gc_correction_tag', type=str,
                       default=None, help='tag to be used to extract gc coefficient per read from a bam file')
         @click.option("--w", default=None, type=int, show_default=True,
-                      help="window used for the number of baseses around either the middle point in the fld_middle_around "
-                           "or the number of bases around the center of the dyad in fld_dyad")
+                      help="window used for the number of bases around either the middle point in the "
+                           "fld_middle_around or the number of bases around the center of the dyad in fld_dyad")
         @click.option("--fld_type",
                       type=click.Choice(["fld", "fld_middle", "fld_middle_n", "fld_dyad"],
                                         case_sensitive=False),
@@ -186,8 +188,8 @@ class CliHook:
                 gc_correction_tag: Optional[str] = None,
         ):
             """
-            given a set of genomic intervals having the same length w, the extract_fragment_length_ratios extracts the 
-            fragment length ratios of the reads contained in two different parts of the fragment length distribution at 
+            given a set of genomic intervals having the same length w, the extract_fragment_length_ratios extracts the
+            fragment length ratios of the reads contained in two different parts of the fragment length distribution at
             each position:
 
             .. math::

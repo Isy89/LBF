@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 import pandas as pd
 import pysam
@@ -88,7 +86,9 @@ class TfbsFragmentLengthDistributionDyad(TfbsFragmentLengthDistributionMiddleNPo
             p=[p_same, p_next]
         )
 
-        expanded_fragment_length = n_of_possible_nucleosomes * nucleosome_length if n_of_possible_nucleosomes > 0 else nucleosome_length
+        expanded_fragment_length = (
+            n_of_possible_nucleosomes * nucleosome_length if n_of_possible_nucleosomes > 0 else nucleosome_length
+        )
         middle_point = f // 2
         relative_middle_point = relative_start + middle_point
         relative_start = relative_middle_point - (expanded_fragment_length // 2)
@@ -96,7 +96,7 @@ class TfbsFragmentLengthDistributionDyad(TfbsFragmentLengthDistributionMiddleNPo
             m = expanded_fragment_length // (n_of_possible_nucleosomes * 2)
         else:
             m = expanded_fragment_length // 2
-        for i in range(1, n_of_possible_nucleosomes *2, 2):
+        for i in range(1, n_of_possible_nucleosomes * 2, 2):
             n_s = relative_start + (m * i) - self.n
             n_e = relative_start + (m * i) + self.n
             s.append((n_s, n_e))

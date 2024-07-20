@@ -248,6 +248,8 @@ class TestCli:
                "--path_to_bam", str(path_to_bam_for_in_batch_tests),
                "--path_to_bed", str(path_to_bed_dir),
                "--output_path", str(output_path),
+               "--n_reads", str(20000),
+               "--subsample"
                ]
         runner = CliRunner()
         logger.info("Testing test_extract_entropy_in_batch")

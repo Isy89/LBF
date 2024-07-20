@@ -5,25 +5,25 @@ from functools import reduce
 from typing import Any, Optional
 
 import click
-import matplotlib
 import numpy as np
 import pandas as pd
 import pyranges
 import scipy.stats
+from matplotlib import pyplot as plt
 
 import lbfextract.fextract.signal_transformer
 import lbfextract.fextract_fragment_length_distribution
 import lbfextract.fextract_fragment_length_distribution.signal_summarizers
 from lbfextract.core import App
 from lbfextract.fextract.schemas import Config, ReadFetcherConfig, AppExtraConfig
-from lbfextract.utils import load_temporary_bed_file, get_tmp_fextract_file_name, filter_bam, generate_time_stamp, \
-    check_input_bed, check_input_bam, filter_out_empty_bed_files
-from lbfextract.utils_classes import Signal
 from lbfextract.fextract_batch_coverage.schemas import PlotConfig
-from lbfextract.fextract_entropy.schemas import SignalSummarizer
+from lbfextract.fextract_entropy_in_batch.schemas import SignalSummarizer
 from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
 from lbfextract.fextract_fragment_length_distribution_in_batch.plugin import IntervalIteratorFld
 from lbfextract.plotting_lib.plotting_functions import plot_signal
+from lbfextract.utils import load_temporary_bed_file, get_tmp_fextract_file_name, filter_bam, generate_time_stamp, \
+    check_input_bed, check_input_bam, filter_out_empty_bed_files, sanitize_file_name
+from lbfextract.utils_classes import Signal
 
 logger = logging.getLogger(__name__)
 
@@ -45,16 +45,13 @@ class IntervalIteratorRelativeEntropyFlanking(IntervalIteratorFld):
 
     def __next__(self):
         fld_dict: dict = super().__next__()
-        return {k: self.get_relative_entropy(v, self.flanking_window) for k, v in fld_dict.items()}
+        return {k: self.get_entropy(v) for k, v in fld_dict.items()}
 
     @staticmethod
-    def get_relative_entropy(array, flanking_window):
+    def get_entropy(array):
         array += 1e-10
         array /= array.sum(axis=0)
-        entropy = np.apply_along_axis(
-            lambda x: scipy.stats.entropy(x),
-            0,
-            array)
+        entropy = np.apply_along_axis(scipy.stats.entropy, 0, array)
         return entropy
 
 
@@ -158,7 +155,7 @@ class FextractHooks:
         )
 
     @lbfextract.hookimpl
-    def plot_signal(self, signal: Signal, extra_config: Any) -> matplotlib.figure.Figure:
+    def plot_signal(self, signal: Signal, extra_config: Any) -> dict[str, pathlib.Path]:
         """
         :param signal: Signal object containing the signals per interval
         :param extra_config: extra configuration that may be used in the hook implementation
@@ -167,15 +164,19 @@ class FextractHooks:
         run_id = extra_config.ctx["id"]
         signal_type = "_".join(signal.tags) if signal.tags else ""
 
-        fig = None
+        fig_pths = {}
         for i in signal.array:
             array = signal.array[i]
             fig, ax = plot_signal(array, line_type="-")
             sample_name = extra_config.ctx["path_to_bam"].stem
-            fig.suptitle(f"{sample_name} {signal_type} {i}")
-            output_path = extra_config.ctx["output_path"] / f"{time_stamp}__{run_id}__{signal_type}__{i}__heatmap.png"
+            fig.suptitle(f"{sample_name} {signal_type} {i}".capitalize(), fontsize=20)
+            file_name =  f"{time_stamp}__{run_id}__{signal_type}__{i}__heatmap.png"
+            file_name_sanitized = sanitize_file_name(file_name)
+            output_path = extra_config.ctx["output_path"] / file_name_sanitized
             fig.savefig(output_path, dpi=300)
-        return fig
+            plt.close(fig)
+            fig_pths[i] = output_path
+        return fig_pths
 
 
 class CliHook:
@@ -224,7 +225,7 @@ class CliHook:
                       help="Integer describing the number of bases to be extracted after the window")
         @click.option("--extra_bases", default=2000, type=int, show_default=True,
                       help="Integer describing the number of bases to be extracted from the bamfile when removing the "
-                           "unused bases to be sure to get all the proper paires, which may be mapping up to 2000 bs")
+                           "unused bases to be sure to get all the proper pairs, which may be mapping up to 2000 bs")
         @click.option("--n_binding_sites", default=1000, type=int, show_default=True,
                       help="number of intervals to be used to extract the signal, if it is higher then the provided"
                            "intervals, all the intervals will be used")
@@ -248,33 +249,33 @@ class CliHook:
         @click.option('--gc_correction_tag', type=str,
                       default=None, help='tag to be used to extract gc coefficient per read from a bam file')
         @click.option("--w", default=5, type=int, show_default=True,
-                      help="window used for the number of baseses around either the middle point in the fld_middle_around "
-                           "or the number of bases around the center of the dyad in fld_dyad")
-        @click.option("--fld_type", 
+                      help="window used for the number of bases around either the middle point in the "
+                           "fld_middle_around or the number of bases around the center of the dyad in fld_dyad")
+        @click.option("--fld_type",
                       type=click.Choice(["fld", "fld_middle", "fld_middle_n", "fld_dyad"],
                                         case_sensitive=False),
                       show_default=True, default="fld",
                       help="type of fragment length distribution to be extracted")
         def extract_entropy_in_batch(path_to_bam: pathlib.Path, path_to_bed: pathlib.Path,
-                                                          output_path: pathlib.Path,
-                                                          skip_read_fetching: bool,
-                                                          window: int,
-                                                          flanking_window: int,
-                                                          extra_bases: int,
-                                                          n_binding_sites: int,
-                                                          min_fragment_length: int,
-                                                          max_fragment_length: int,
-                                                          n_reads: int,
-                                                          subsample: bool,
-                                                          n_bins_pos: int,
-                                                          n_bins_len: int,
-                                                          cores: int,
-                                                          w: int,
-                                                          fld_type: str,
-                                                          exp_id: Optional[str],
-                                                          flip_based_on_strand: bool = False,
-                                                          gc_correction_tag: Optional[str] = None
-                                                          ):
+                                     output_path: pathlib.Path,
+                                     skip_read_fetching: bool,
+                                     window: int,
+                                     flanking_window: int,
+                                     extra_bases: int,
+                                     n_binding_sites: int,
+                                     min_fragment_length: int,
+                                     max_fragment_length: int,
+                                     n_reads: int,
+                                     subsample: bool,
+                                     n_bins_pos: int,
+                                     n_bins_len: int,
+                                     cores: int,
+                                     w: int,
+                                     fld_type: str,
+                                     exp_id: Optional[str],
+                                     flip_based_on_strand: bool = False,
+                                     gc_correction_tag: Optional[str] = None
+                                     ):
             """
             Extract the entropy signal for a TF from a bam file and a bed file.
             """

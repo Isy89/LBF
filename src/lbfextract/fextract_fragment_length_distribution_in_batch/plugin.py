@@ -5,39 +5,44 @@ from functools import reduce
 from typing import Any, Optional
 
 import click
-import matplotlib
 import numpy as np
 import pandas as pd
 import pyranges
 import pysam
+from matplotlib import pyplot as plt
 
 import lbfextract.fextract.signal_transformer
 import lbfextract.fextract_fragment_length_distribution
 import lbfextract.fextract_fragment_length_distribution.signal_summarizers
 from lbfextract.core import App
 from lbfextract.fextract.schemas import Config, ReadFetcherConfig, AppExtraConfig
-from lbfextract.utils import load_temporary_bed_file, get_tmp_fextract_file_name, filter_bam, generate_time_stamp, \
-    check_input_bed, check_input_bam, filter_out_empty_bed_files
-from lbfextract.utils_classes import Signal
 from lbfextract.fextract_batch_coverage.schemas import PlotConfig
-from lbfextract.fextract_entropy.schemas import SignalSummarizer
+from lbfextract.fextract_entropy_in_batch.schemas import SignalSummarizer
+from lbfextract.fextract_fragment_length_distribution.plugin import calculate_reference_distribution, get_peaks
 from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
 from lbfextract.plotting_lib.plotting_functions import plot_fragment_length_distribution
-from lbfextract.fextract_fragment_length_distribution.plugin import calculate_reference_distribution, get_peaks
+from lbfextract.utils import load_temporary_bed_file, get_tmp_fextract_file_name, filter_bam, generate_time_stamp, \
+    check_input_bed, check_input_bam, filter_out_empty_bed_files, sanitize_file_name
+from lbfextract.utils_classes import Signal
 
 logger = logging.getLogger(__name__)
 
+
 def subsample_fragment_lengths(x, n):
-    new_x = np.zeros_like(x)
-    subsampled_reads = np.random.choice(np.arange(0, x.shape[0]), size=n,
-                                        p=np.where(x > 0, x / x.sum(), 0), replace=True)
-    for i in range(x.shape[0]):
-        new_x[i] = np.sum(subsampled_reads == i)
+    mask = x > 0
+    probabilities = np.zeros_like(x)
+    probabilities[mask] = x[mask] / x[mask].sum()
+    subsampled_reads = np.random.choice(len(x), size=n, p=probabilities, replace=True)
+    new_x = np.bincount(subsampled_reads, minlength=len(x))
     return new_x
 
-def extract_coverage(coverage_extractor, transformed_reads):
-    array = np.vstack(transformed_reads.apply(lambda x: coverage_extractor(x), axis=1))
-    return array
+
+def optimize_tensor_subsampling(tensor, n):
+    num_rows, num_columns = tensor.shape
+    subsampled_tensor = np.zeros_like(tensor)
+    for col in range(num_columns):
+        subsampled_tensor[:, col] = subsample_fragment_lengths(tensor[:, col], n)
+    return subsampled_tensor
 
 
 def identity(x):
@@ -62,6 +67,7 @@ class IntervalIteratorFld:
         self.subsample = None
         self.n = None
         self.flip_based_on_strand = flip_based_on_strand
+        self.bamfile = pysam.AlignmentFile(self.path_to_bam)
 
     def __iter__(self):
         return self
@@ -69,19 +75,30 @@ class IntervalIteratorFld:
     def set_signal_transformer(self, signal_transformer):
         self.signal_transformer = signal_transformer
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["bamfile"] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.path_to_bam = pysam.AlignmentFile(state['path_to_bam'])
+
     def __next__(self):
         if self._index < len(self.sequence):
             key = self.sequence[self._index]
-            bamfile = pysam.AlignmentFile(self.path_to_bam)
             df = self.df_by_name.get_group(key).copy()
-            df["reads_per_interval"] = df.apply(
-                lambda x: bamfile.fetch(x["Chromosome"], x["Start"], x["End"], multiple_iterators=True),
-                axis=1
-            )
-            df.loc[:, "Start"] = df.Start + self.extra_bases
-            df.loc[:, "End"] = df.End - self.extra_bases
+            df["reads_per_interval"] = [
+                self.bamfile.fetch(row.Chromosome, row.Start, row.End, multiple_iterators=False)
+                for row in df.itertuples()
+            ]
+
+            df["Start"] += self.extra_bases
+            df["End"] -= self.extra_bases
+
             relative_fragment_len = self.max_fragment_length - self.min_fragment_length
-            region_length = df["End"][0] - df["Start"][0]
+            region_length = df["End"].iloc[0] - df["Start"].iloc[0]
+
             tensor = np.zeros((relative_fragment_len, region_length))
             for interval in df.itertuples():
                 if self.flip_based_on_strand:
@@ -94,22 +111,28 @@ class IntervalIteratorFld:
                         tensor += self.signal_transformer(interval)
                 else:
                     tensor += self.signal_transformer(interval)
+            del df
+
+            def bin_tensor(t, bins, axis):
+                bin_edges = np.linspace(0, t.shape[axis], bins + 1, dtype=int)
+                return np.add.reduceat(t, bin_edges[:-1], axis=axis)
+
             if self.n_bins_pos:
-                tensor = np.hstack(
-                    list(map(lambda x: x.sum(axis=1)[:, None], np.array_split(tensor, self.n_bins_pos, axis=1))))
+                tensor = bin_tensor(tensor, self.n_bins_pos, axis=1)
+
             if self.n_bins_len:
-                tensor = np.vstack(list(map(lambda x: x.sum(axis=0), np.array_split(tensor, self.n_bins_len, axis=0))))
+                tensor = bin_tensor(tensor, self.n_bins_len, axis=0)
+
             if self.subsample:
                 n = self.n or int(tensor.sum(axis=0).min())
-                tensor = np.apply_along_axis(
-                    lambda x: subsample_fragment_lengths(x, n),
-                    0,
-                    tensor
-                )
+                tensor = optimize_tensor_subsampling(tensor, n)
 
-            array = np.apply_along_axis(lambda x: x / x.sum() if x.sum() > 0 else x, 0, tensor)
+            col_sums = tensor.sum(axis=0)
+            non_zero_mask = col_sums > 0
+            tensor[:, non_zero_mask] /= col_sums[non_zero_mask]
+
             self._index += 1
-            return {key: array}
+            return {key: tensor}
         else:
             raise StopIteration
 
@@ -226,7 +249,6 @@ class FextractHooks:
                 "tags": ("fld_peter_ulz",)
             }
 
-
         }
         fld_extractor_params = signal_transformers_dict[config.signal_transformer]["config"]
         fld_extractor = getattr(lbfextract.fextract_fragment_length_distribution.signal_summarizers,
@@ -258,7 +280,7 @@ class FextractHooks:
     def save_signal(self,
                     signal: Signal,
                     config: Any,
-                    extra_config: Any):
+                    extra_config: Any) -> pathlib.Path:
         """
         :param signal: Signal object containing the signals per interval
         :param config: config specific to the save signal hook
@@ -270,33 +292,37 @@ class FextractHooks:
         run_id = extra_config.ctx["id"]
         signal_type = "_".join(signal.tags)
         file_path = output_path / f"{time_stamp}__{run_id}__{signal_type}__signal"
-        logging.info(f"Saving signal to {file_path}")
+        logger.info(f"Saving signal to {file_path}")
         np.savez_compressed(file_path, **signal.array)
         return file_path
 
     @lbfextract.hookimpl
-    def plot_signal(self, signal: Signal, extra_config: Any) -> matplotlib.figure.Figure:
+    def plot_signal(self, signal: Signal, extra_config: Any, config: PlotConfig, ) -> dict[str, pathlib.Path]:
         """
         :param signal: Signal object containing the signals per interval
+        :param config: object containing the configuration to create the plots
         :param extra_config: extra configuration that may be used in the hook implementation
         """
         time_stamp = generate_time_stamp()
         run_id = extra_config.ctx["id"]
         signal_type = "_".join(signal.tags) if signal.tags else ""
 
-        fig = None
+        fig_pths = {}
         for i in signal.array:
+            file_name = f"{time_stamp}__{run_id}__{signal_type}__{i}__heatmap.png"
+            file_name_sanitized = sanitize_file_name(file_name)
             array = signal.array[i]
             start_pos = extra_config.ctx["single_signal_transformer_config"].min_fragment_length
             end_pos = array.shape[0] + start_pos
             fig = plot_fragment_length_distribution(array, start_pos, end_pos)
             sample_name = extra_config.ctx["path_to_bam"].stem
-            fig.suptitle(f"{sample_name} {signal_type} {i}")
-            output_path = extra_config.ctx["output_path"] / f"{time_stamp}__{run_id}__{signal_type}__{i}__heatmap.png"
+            fig.suptitle(f"{sample_name} {signal_type} {i}".capitalize(), fontsize=25)
+            output_path = extra_config.ctx["output_path"] / file_name_sanitized
             fig.savefig(output_path, dpi=300)
+            fig_pths[i] = output_path
+            plt.close(fig)
 
-            fig.savefig(output_path)
-        return fig
+        return fig_pths
 
 
 class CliHook:
@@ -345,7 +371,7 @@ class CliHook:
                       help="Integer describing the number of bases to be extracted after the window")
         @click.option("--extra_bases", default=2000, type=int, show_default=True,
                       help="Integer describing the number of bases to be extracted from the bamfile when removing the "
-                           "unused bases to be sure to get all the proper paires, which may be mapping up to 2000 bs")
+                           "unused bases to be sure to get all the proper pairs, which may be mapping up to 2000 bs")
         @click.option("--n_binding_sites", default=1000, type=int, show_default=True,
                       help="number of intervals to be used to extract the signal, if it is higher then the provided"
                            "intervals, all the intervals will be used")
@@ -371,8 +397,8 @@ class CliHook:
                       show_default=True, default="fld",
                       help="type of fragment length distribution to be extracted")
         @click.option("--w", default=5, type=int, show_default=True,
-                      help="window used for the number of baseses around either the middle point in the fld_middle_around "
-                           "or the number of bases around the center of the dyad in fld_dyad")
+                      help="window used for the number of bases around either the middle point in the "
+                           "fld_middle_around or the number of bases around the center of the dyad in fld_dyad")
         def extract_fragment_length_distribution_in_batch(path_to_bam: pathlib.Path, path_to_bed: pathlib.Path,
                                                           output_path: pathlib.Path,
                                                           skip_read_fetching: bool,
@@ -392,9 +418,9 @@ class CliHook:
                                                           exp_id: Optional[str],
                                                           gc_correction_tag: Optional[str] = None):
             """
-            Given a set of genomic intervals having the same length w, the extract_fragment_length_distribution feature 
-            extraction method extracts the fragment length distribution at each position of the genomic intervals used for
-            multiple BED files at the same time.
+            Given a set of genomic intervals having the same length w, the extract_fragment_length_distribution feature
+            extraction method extracts the fragment length distribution at each position of the genomic intervals used
+            for multiple BED files at the same time.
             """
             read_fetcher_config = {
                 "window": window,

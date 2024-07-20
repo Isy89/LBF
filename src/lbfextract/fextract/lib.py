@@ -13,16 +13,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pyranges
+import pyranges as pr
 import pysam
 
 import lbfextract.fextract
 import lbfextract.fextract.signal_transformer
 from lbfextract.fextract.schemas import ReadFetcherConfig, Config, SingleSignalTransformerConfig, \
     SignalSummarizer, AppExtraConfig
-from lbfextract.utils import filter_bam, load_temporary_bed_file, generate_time_stamp, get_tmp_bam_name, \
-    write_yml, load_reads_from_dir
-from lbfextract.utils_classes import Signal
 from lbfextract.plotting_lib.plotting_functions import plot_signal
+from lbfextract.utils import filter_bam, load_temporary_bed_file, generate_time_stamp, get_tmp_bam_name, \
+    write_yml, load_reads_from_dir, sanitize_file_name
+from lbfextract.utils_classes import Signal
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,8 @@ class FextractHooks:
                                                                     n_binding_sites=config.n_binding_sites,
                                                                     run_id=extra_config.ctx["run_id"])
         if config.window == 0:
-            if any(bed_file.as_df()["Start"] == bed_file.as_df()["End"]):
+            starts_equal_ends: pd.Series = bed_file.as_df()["Start"] == bed_file.as_df()["End"]
+            if any(starts_equal_ends):
                 raise ValueError("The bed file contains intervals with the same start and end but window is set to 0."
                                  "Please either provide interval of size grater than 0 or set the window size to a value"
                                  "greater than 0")
@@ -67,10 +69,10 @@ class FextractHooks:
 
         bamfile = pysam.AlignmentFile(tmp_bam_file)
         list_of_reads = bed_file.as_df()
-        list_of_reads["reads_per_interval"] = list_of_reads.apply(
-            lambda x: bamfile.fetch(x["Chromosome"], x["Start"], x["End"], multiple_iterators=True),
-            axis=1
-        )
+        list_of_reads["reads_per_interval"] = [
+            bamfile.fetch(row.Chromosome, row.Start, row.End, multiple_iterators=False)
+            for row in list_of_reads.itertuples(index=False)
+        ]
         return pyranges.PyRanges(list_of_reads).slack(-config.extra_bases).as_df()
 
     @lbfextract.hookimpl
@@ -185,10 +187,13 @@ class FextractHooks:
         coverage_extractor = getattr(lbfextract.fextract.signal_transformer,
                                      signal_transformers_dict[config.signal_transformer]["class"])(
             **coverage_extractor_params)
-        array = np.vstack(transformed_reads.apply(lambda x: coverage_extractor(x), axis=1))
+
+        array = np.vstack([coverage_extractor(row) for row in transformed_reads.itertuples(index=False)])
 
         if config.flip_based_on_strand:
-            array[transformed_reads["Strand"] == "-", :] = np.fliplr(array[transformed_reads["Strand"] == "-"])
+            strands = transformed_reads["Strand"].values
+            flip_mask = strands == "-"
+            array[flip_mask] = np.fliplr(array[flip_mask])
 
         return Signal(
             array=array,
@@ -211,11 +216,10 @@ class FextractHooks:
             "min": np.min,
             "skip": lambda x, axis: x
         }
+        indices = np.arange(single_intervals_transformed_reads.array.shape[1])
         index_flanking = np.logical_or(
-            np.arange(single_intervals_transformed_reads.array.shape[1]) < flanking_window,
-            np.arange(single_intervals_transformed_reads.array.shape[1]) > (
-                    single_intervals_transformed_reads.array.shape[1] - flanking_window
-            )
+            indices < flanking_window,
+            indices > (indices - flanking_window)
         )
 
         normalized_array = np.zeros_like(single_intervals_transformed_reads.array)
@@ -235,13 +239,18 @@ class FextractHooks:
                     config: Any,
                     extra_config: AppExtraConfig
                     ) -> pathlib.Path:
-        output_path = extra_config.ctx["output_path"]
+
         time_stamp = generate_time_stamp()
         run_id = extra_config.ctx["id"]
         signal_type = "_".join(signal.tags)
-        with open(output_path / f"{time_stamp}__{run_id}__{signal_type}__signal.pkl", "wb") as f:
+        
+        file_name = f"{time_stamp}__{run_id}__{signal_type}__signal.pkl"
+        file_name_sanitized = sanitize_file_name(file_name)
+
+        output_path = extra_config.ctx["output_path"] / file_name_sanitized
+        with open(output_path, "wb") as f:
             pickle.dump(signal, f)
-        return output_path / f"{time_stamp}__{run_id}__{signal_type}__signal.pkl"
+        return output_path
 
     @lbfextract.hookimpl
     def plot_signal(self, signal: Signal,
@@ -256,8 +265,9 @@ class FextractHooks:
             fig, _ = plot_signal(signal.array, apply_savgol=False, ax=ax, fig=fig, label=signal_type)
             ax.set_ylabel(signal_type)
             ax.set_xlabel("Position")
-        fig.savefig(
-            extra_config.ctx["output_path"] /
-            f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.pdf",
-            dpi=300)
+
+        file_name = f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.png"
+        file_name_sanitized = sanitize_file_name(file_name)
+        output_path = extra_config.ctx["output_path"] / file_name_sanitized
+        fig.savefig(output_path, dpi=300)
         return fig

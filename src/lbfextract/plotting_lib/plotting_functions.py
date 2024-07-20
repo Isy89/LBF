@@ -9,6 +9,8 @@ import pandas as pd
 import seaborn
 from scipy.signal import savgol_filter
 from sklearn.decomposition import PCA
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,7 @@ def plot_signal(summary: np.array,
                 title_font_size=20,
                 general_font_size=15,
                 plot_center_line_label=True,
-                line_type="-"):
+                line_type="-") -> tuple[Figure, Axes]:
     """
     function to plot the signal summarised according to a specific function
 
@@ -75,6 +77,7 @@ def plot_signal(summary: np.array,
     ax.spines[['right', 'top', 'bottom']].set_visible(False)
     return fig, ax
 
+
 def plot_signal_batch(df: pd.DataFrame,
                       apply_savgol: bool = False,
                       savgol_window_length: int = 11,
@@ -94,18 +97,33 @@ def plot_signal_batch(df: pd.DataFrame,
                       bottom=5,
                       window_center=50,
                       mask_rows=None,
-                      ):
+                      ) -> tuple[Figure, Axes]:
     """
-    function to plot the signal summarised according to a specific function
-    Args:
-        df: array describing the signal
-        apply_savgol: wether or not to apply savgol_filter
-        savgol_window_length: window to smoth over
-        savgol_polyorder: degree of polynomial to use
+    Plots the signal for the top and bottom BED files based on their peak or deep in the central part of the signal one 
+    next to the others optionally using Savitzky-Golay filter and various customization options.
 
-    Returns:
-        matplolib Figure object representing the plot
+    :param df: The DataFrame containing the signal data to plot.
+    :param apply_savgol: Whether to apply the Savitzky-Golay filter to smooth the signal. Default is False.
+    :param savgol_window_length: The window length parameter for the Savitzky-Golay filter. Default is 11.
+    :param savgol_polyorder: The polynomial order parameter for the Savitzky-Golay filter. Default is 3.
+    :param signal: The signal label for the y-axis. Default is "coverage".
+    :param title: The title for the plot. Default is "coverage at TFBS".
+    :param figsize: The size of the figure. Default is (20, 10).
+    :param ax: The axes object to use for plotting. If not provided, new axes will be created.
+    :param fig: The figure object to use for plotting. If not provided, a new figure will be created.
+    :param color: The color of the plot line. Default is None.
+    :param label: The label for the plot line. Default is None.
+    :param alpha: The transparency level of the plot line. Default is 1.
+    :param linewidth: The width of the plot line. Default is 1.
+    :param flanking: The number of flanking base pairs to consider in the analysis. Default is 1500.
+    :param xlabel: The label for the x-axis. Default is None.
+    :param top: The number of top rows to consider for analysis. Default is 5.
+    :param bottom: The number of bottom rows to consider for analysis. Default is 5.
+    :param window_center: The number of base pairs to consider around the center for amplitude calculation. Default is 
+                          50.
+    :param mask_rows: The mask rows to apply to the DataFrame. Default is None.
 
+    :return: A tuple containing the figure and axes objects (fig, ax).
     """
 
     df = df.copy()
@@ -170,7 +188,19 @@ def plot_signal_batch(df: pd.DataFrame,
 def plot_heatmap_signal_batch(fig=None, ax=None, array=None,
                               title=None,
                               title_font_size=20,
-                              general_font_size=15):
+                              general_font_size=15) -> tuple[Figure, Axes]:
+    """
+    Plots a heatmap of the given array using seaborn's heatmap function.
+
+    :param fig: The figure object to use for plotting. If not provided, a new figure will be created.
+    :param ax: The axes object to use for plotting. If not provided, new axes will be created.
+    :param array: The 2D array to plot as a heatmap.
+    :param title: The title for the heatmap. If not provided, no title will be set.
+    :param title_font_size: The font size for the title. Default is 20.
+    :param general_font_size: The font size for the axis labels. Default is 15.
+    :return: A tuple containing the figure and axes objects (fig, ax).
+    """
+
     if not ax:
         fig, ax = plt.subplots(figsize=(20, 10))
 
@@ -201,7 +231,26 @@ def plot_heatmap_kde_amplitude(array=None,
                                window_center=50,
                                top=5,
                                bottom=5,
-                               ):
+                               ) -> tuple[Figure, Axes]:
+    """
+    Plots various analyses of the given array, including a PCA plot, signal plot, signal per position plot, 
+    and correlation plot.
+
+    :param array: The 2D array to plot and analyze.
+    :param fig: The figure object to use for plotting. If not provided, a new figure will be created.
+    :param ax: The axes objects to use for plotting. If not provided, new axes will be created.
+    :param title: The title for the plots. If not provided, no title will be set.
+    :param title_font_size: The font size for the title. Default is 20.
+    :param general_font_size: The font size for the axis labels. Default is 15.
+    :param tf_to_annotate: Transcription factors to annotate on the PCA plot. Default is ("CTCF",).
+    :param ylabel: The label for the y-axis of the correlation plot.
+    :param flanking: The number of flanking base pairs to consider in the analysis. Default is 1500.
+    :param annotation_center_line: The center line annotation for the heatmap. Default is "center".
+    :param window_center: The number of base pairs to consider around the center for amplitude calculation. Default is 50.
+    :param top: The number of top rows to consider for analysis. Default is 5.
+    :param bottom: The number of bottom rows to consider for analysis. Default is 5.
+    :return: A tuple containing the figure and axes objects (fig, ax).
+    """
     array = array.copy()
     if not ax:
         fig, ax = plt.subplots(2, 2, figsize=(20, 10))
@@ -234,6 +283,7 @@ def plot_heatmap_kde_amplitude(array=None,
         seaborn.kdeplot(
             data=trf_array, x="PC1", y="PC2", ax=ax[0, 1], color="lightgray")
     seaborn.scatterplot(data=trf_array, x="PC1", y="PC2", ax=ax[0, 1], sizes="amplitude")
+    ax[0, 1].set_title("PCA plot", fontsize=general_font_size)
 
     array["amplitude"] = trf_array.amplitude.copy()
     row_slice = slice(None, None, None)
@@ -259,18 +309,22 @@ def plot_heatmap_kde_amplitude(array=None,
         ax[0, 0].plot(amplitude, point, marker="o", markersize=marker_size, markeredgecolor="blue",
                       markerfacecolor="lightblue")
     ax[0, 0].set_yticks(np.arange(df.shape[0]), labels=df.index.to_list(), rotation=0)
-    ax[0, 0].set_xlabel("amplitude", fontsize=general_font_size)
-
+    ax[0, 0].set_xlabel("Signal", fontsize=general_font_size)
+    ax[0, 0].set_title("Signal plot", fontsize=general_font_size)
     df.drop(columns=["amplitude"], inplace=True)
 
     fig, _ = create_heatmap_bed_per_position(df=df, fig=fig, ax=ax[1, 0], title="", ylabel=None,
                                              general_font_size=general_font_size,
                                              title_font_size=title_font_size,
                                              annotation_center_line=annotation_center_line)
+    ax[1, 0].collections[0].colorbar.set_label('Signal scale', fontsize=general_font_size)
+    ax[1, 0].set_title("Signal per position plot", fontsize=general_font_size)
 
     fig, _ = create_masked_corr_matrix_plot(df, fig=fig, ax=ax[1, 1], title=None, title_font_size=title_font_size,
                                             general_font_size=general_font_size,
                                             axlabel=ylabel)
+    ax[1, 1].collections[0].colorbar.set_label('Correlation scale', fontsize=general_font_size)
+    ax[1, 1].set_title("Correlation plot", fontsize=general_font_size)
     for i in range(2):
         for l in range(2):
             if i == 0 and l == 0:
@@ -283,7 +337,14 @@ def plot_heatmap_kde_amplitude(array=None,
     return fig, ax
 
 
-def correlation_map_plot(df):
+def correlation_map_plot(df) -> Figure:
+    """
+    This function creates a plot of the correlation matrix between the provided signals.
+
+    :params df: pandas DataFrame containing the signal per BED file to be plotted
+    :return: A matplotlib.Figure object containing the plot
+    """
+
     corr_mat = df.T.corr().stack().reset_index(name="correlation")
     fig = seaborn.relplot(
         data=corr_mat,
@@ -302,7 +363,22 @@ def correlation_map_plot(df):
 
 
 def create_masked_corr_matrix_plot(df, fig=None, ax=None, title=None, title_font_size=20, general_font_size=15,
-                                   axlabel=None, label_color_bar=""):
+                                   axlabel=None, label_color_bar="") -> tuple[Figure, Axes]:
+    """
+    Creates a masked correlation matrix plot.
+
+    :param df: The DataFrame to compute and plot the correlation matrix from.
+    :param fig: The figure object to use for plotting. If not provided, a new figure will be created.
+    :param ax: The axes object to use for plotting. If not provided, new axes will be created.
+    :param title: The title for the plot. If not provided, no title will be set.
+    :param title_font_size: The font size for the title. Default is 20.
+    :param general_font_size: The font size for the axis labels. Default is 15.
+    :param axlabel: The label for the x and y axes. Default is None.
+    :param label_color_bar: The label for the color bar. Default is an empty string.
+
+    :return: A tuple containing the figure and axes objects (fig, ax).
+    """
+    
     df = df.T.copy().corr()
     if not ax or not fig:
         fig, ax = plt.subplots(1, 1, figsize=(20, 10))
@@ -329,11 +405,29 @@ def create_masked_corr_matrix_plot(df, fig=None, ax=None, title=None, title_font
 
 def create_heatmap_bed_per_position(df, fig=None, ax=None, title="", ylabel=None, general_font_size=15,
                                     title_font_size=20, annotation_center_line: str = None,
-                                    label_color_bar=""):
+                                    label_color_bar="") -> tuple[Figure, Axes]:
+    """
+    Creates a heatmap of the given DataFrame containing the signals for each BED file with optional annotations and customizations.
+
+    :param df: The DataFrame to plot as a heatmap.
+    :param fig: The figure object to use for plotting. If not provided, a new figure will be created.
+    :param ax: The axes object to use for plotting. If not provided, new axes will be created.
+    :param title: The title for the plot. Default is an empty string.
+    :param ylabel: The label for the y-axis. Default is None.
+    :param general_font_size: The font size for the axis labels. Default is 15.
+    :param title_font_size: The font size for the title. Default is 20.
+    :param annotation_center_line: The label for the vertical center line annotation. Default is None.
+    :param label_color_bar: The label for the color bar. Default is an empty string.
+
+    :return: A tuple containing the figure and axes objects (fig, ax).
+    """
+    
     if not ax or not fig:
         fig, ax = plt.subplots(2, 2, figsize=(20, 10))
 
-    seaborn.heatmap(df, ax=ax, cmap="viridis", cbar_kws={'label': label_color_bar, 'orientation': 'horizontal'},
+    seaborn.heatmap(df, ax=ax, cmap="viridis", cbar_kws={'label': label_color_bar,
+                                                         'orientation': 'horizontal',
+                                                         },
                     rasterized=True, cbar=True)
     if df.shape[0] > 20:
         ax.set_yticks([])
@@ -352,7 +446,20 @@ def create_heatmap_bed_per_position(df, fig=None, ax=None, title="", ylabel=None
     return fig, ax
 
 
-def plot_fragment_length_distribution(array: np.array, start_pos: int, end_pos: int, title="FLD per position"):
+def plot_fragment_length_distribution(array: np.array, 
+                                      start_pos: int, 
+                                      end_pos: int,
+                                      title="FLD per position") -> Figure:
+    """
+    Plots the fragment length distribution per position.
+
+    :param array: The array containing the fragment length data.
+    :param start_pos: The starting position for the distribution plot.
+    :param end_pos: The ending position for the distribution plot.
+    :param title: The title for the plot. Default is "FLD per position".
+
+    :return: The figure object containing the plots.
+    """
     general_font_size = 15
     small_font_size = 12
     fig = plt.figure(constrained_layout=True, figsize=(15, 10))
@@ -362,13 +469,16 @@ def plot_fragment_length_distribution(array: np.array, start_pos: int, end_pos: 
     axs_distr_plots = [fig.add_subplot(gs[1:3, i]) for i in range(7)]
 
     df = pd.DataFrame(array, index=range(start_pos, end_pos))
-    seaborn.heatmap(df, ax=ax_heatmap, rasterized=True, cbar_kws={"orientation": "horizontal"})
+    seaborn.heatmap(df, ax=ax_heatmap, rasterized=True, cbar_kws={
+        "orientation": "horizontal",
+    })
     ax_heatmap.set_yticks([0, array.shape[0] // 2, array.shape[0]], [start_pos, (end_pos - start_pos) // 2, end_pos],
                           fontsize=general_font_size)
     ax_heatmap.set_xticks([0, array.shape[-1] // 2, array.shape[-1]], [-array.shape[-1] // 2, 0, +array.shape[-1] // 2],
                           fontsize=general_font_size)
     ax_heatmap.set_xlabel("Position around genomic interval center", fontsize=20)
     ax_heatmap.set_ylabel("Fragment Length Distribution", fontsize=20)
+    ax_heatmap.collections[0].colorbar.set_label('Density Scale', fontsize=small_font_size)
     min_, max_ = [], []
     for count, i in enumerate(np.array_split(array, 7, axis=1)):
         mean_ax_1 = i.mean(axis=1)
@@ -397,35 +507,3 @@ def plot_fragment_length_distribution(array: np.array, start_pos: int, end_pos: 
         axs_distr_plots[count].set_title(f"\u03BCFLD: [{pos - 2000}, {next_pos - 2000})", fontsize=small_font_size)
         pos = next_pos
     return fig
-
-
-def plot_ellipses(ax, weights, means, covars, covariance_type=None):
-    """taken from https://scikit-learn.org/stable/auto_examples/mixture/plot_concentration_prior.html#sphx-glr-auto-examples-mixture-plot-concentration-prior-py"""
-    for n in range(means.shape[0]):
-        if covariance_type == 'full':
-            cov_n = covars[n]
-        elif covariance_type == 'tied':
-            cov_n = covars
-        elif covariance_type == 'diag':
-            cov_n = np.eye(2) * covars[n]
-        elif covariance_type == 'spherical':
-            cov_n = np.eye(2) * covars[n]
-        else:
-            raise ValueError("Invalid covariance_type, must be one of 'spherical', 'tied', 'diag', 'full'")
-
-        eig_vals, eig_vecs = np.linalg.eigh(cov_n)
-        unit_eig_vec = eig_vecs[0] / np.linalg.norm(eig_vecs[0])
-        angle = np.arctan2(unit_eig_vec[1], unit_eig_vec[0])
-        # Ellipse needs degrees
-        angle = 180 * angle / np.pi
-        # eigenvector normalization
-        eig_vals = 2 * np.sqrt(2) * np.sqrt(eig_vals)
-        ell = matplotlib.patches.Ellipse(
-            means[n], eig_vals[0], eig_vals[1], angle=180 + angle, edgecolor="black"
-        )
-        ell.set_clip_box(ax.bbox)
-        ell.set_alpha(weights[n])
-        ell.set_facecolor("#56B4E9")
-        ax.add_artist(ell)
-
-

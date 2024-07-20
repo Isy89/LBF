@@ -16,7 +16,7 @@ import lbfextract.fextract.signal_transformer
 import lbfextract.fextract_fragment_length_distribution.signal_summarizers
 from lbfextract.core import App
 from lbfextract.fextract.schemas import AppExtraConfig, ReadFetcherConfig, Config
-from lbfextract.utils import generate_time_stamp
+from lbfextract.utils import generate_time_stamp, sanitize_file_name
 from lbfextract.utils_classes import Signal
 from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
 from lbfextract.plotting_lib.plotting_functions import plot_fragment_length_distribution
@@ -162,7 +162,10 @@ class FextractHooks:
         :param extra_config: extra configuration that may be used in the hook implementation
         """
         array = single_intervals_transformed_reads.array
-        array = np.apply_along_axis(lambda x: x / x.sum() if x.sum() > 0 else x, 0, array)
+        col_sums = array.sum(axis=0)
+        mask = col_sums > 0
+        normalized_array = np.ones_like(array)
+        normalized_array[:, mask] = array[:, mask] / col_sums[mask]
         return Signal(array=array, tags=single_intervals_transformed_reads.tags, metadata=None)
 
     @lbfextract.hookimpl
@@ -179,8 +182,12 @@ class FextractHooks:
         end_pos = signal.array.shape[0] + start_pos
         sample_name = extra_config.ctx["path_to_bam"].stem
         interval_name = extra_config.ctx["path_to_bed"].stem.split(".", 1)[0]
-        fig = plot_fragment_length_distribution(signal.array, start_pos, end_pos, title=f"{sample_name} {signal_type} {interval_name}")
-        output_path = extra_config.ctx["output_path"] / f"{time_stamp}__{run_id}__{signal_type}__heatmap.png"
+        fig = plot_fragment_length_distribution(signal.array, start_pos, end_pos,
+                                                title=f"{sample_name} {signal_type} {interval_name}")
+        file_name = f"{time_stamp}__{run_id}__{signal_type}__heatmap.png"
+        file_name_sanitized = sanitize_file_name(file_name)
+
+        output_path = extra_config.ctx["output_path"] / file_name_sanitized
         fig.savefig(output_path, dpi=300)
 
         return fig
@@ -198,7 +205,10 @@ class FextractHooks:
         time_stamp = generate_time_stamp()
         run_id = extra_config.ctx["id"]
         signal_type = "_".join(signal.tags)
-        path_to_plot = output_path / f"{time_stamp}__{run_id}__{signal_type}__signal.csv"
+        file_name = f"{time_stamp}__{run_id}__{signal_type}__signal.csv"
+        file_name_sanitized = sanitize_file_name(file_name)
+
+        path_to_plot = output_path / file_name_sanitized
         df = pd.DataFrame(signal.array)
         df.to_csv(path_to_plot)
         return path_to_plot
@@ -206,17 +216,19 @@ class FextractHooks:
 
 class CliHook:
     r"""
-        This CliHook implements the CLI interface for the extract_fragment_length_distribution feature extraction method.
+        This CliHook implements the CLI interface for the extract_fragment_length_distribution feature extraction
+        method.
 
         **extract_fragment_length_distribution**
 
-        Given a set of genomic intervals having the same length w, extract_fragment_length_distribution calculates the 
+        Given a set of genomic intervals having the same length w, extract_fragment_length_distribution calculates the
         fragment length distribution at each position, which can be represented as:
 
         .. math::
             \mathbf{d}_l = \left( \frac{1}{|F|} \sum_{\substack{f \in F \\ |f| = p \\  i \in f}} \mathbb{1}  \right)^{p_e}_{p_s}
 
-        Where :math:`l` represents the genomic position, :math:`f` represents a fragment, :math:`p_e` represent the maximum fragment length
+        Where :math:`l` represents the genomic position, :math:`f` represents a fragment, :math:`p_e` represent
+        the maximum fragment length
         and :math:`p_s` represents the minimum fragment length
     """
 
@@ -265,7 +277,7 @@ class CliHook:
                       help="Integer describing the number of bases to be extracted after the window")
         @click.option("--extra_bases", default=2000, type=int, show_default=True,
                       help="Integer describing the number of bases to be extracted from the bamfile when removing the "
-                           "unused bases to be sure to get all the proper paires, which may be mapping up to 2000 bs")
+                           "unused bases to be sure to get all the proper pairs, which may be mapping up to 2000 bs")
         @click.option("--n_binding_sites", default=1000, type=int, show_default=True,
                       help="number of intervals to be used to extract the signal, if it is higher then the provided"
                            "intervals, all the intervals will be used")
@@ -289,8 +301,8 @@ class CliHook:
         @click.option('--gc_correction_tag', type=str,
                       default=None, help='tag to be used to extract gc coefficient per read from a bam file')
         @click.option("--w", default=5, type=int, show_default=True,
-                      help="window used for the number of baseses around either the middle point in the fld_middle_around "
-                           "or the number of bases around the center of the dyad in fld_dyad")
+                      help="window used for the number of bases around either the middle point in the"
+                           " fld_middle_around or the number of bases around the center of the dyad in fld_dyad")
         @click.option("--fld_type",
                       type=click.Choice(["fld", "fld_middle", "fld_middle_n", "fld_dyad", "fld_peter_ulz"],
                                         case_sensitive=False),
@@ -325,7 +337,7 @@ class CliHook:
 
         ):
             """
-            Given a set of genomic intervals having the same length w, the extract_fragment_length_distribution feature 
+            Given a set of genomic intervals having the same length w, the extract_fragment_length_distribution feature
             extraction method extracts the fragment length distribution at each position of the genomic intervals used.
             """
             read_fetcher_config = {

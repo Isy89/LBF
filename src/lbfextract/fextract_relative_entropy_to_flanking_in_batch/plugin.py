@@ -5,25 +5,25 @@ from functools import reduce
 from typing import Any, Optional
 
 import click
-import matplotlib
 import numpy as np
 import pandas as pd
 import pyranges
 import scipy.stats
+from matplotlib import pyplot as plt
 
 import lbfextract.fextract.signal_transformer
 import lbfextract.fextract_fragment_length_distribution
 import lbfextract.fextract_fragment_length_distribution.signal_summarizers
 from lbfextract.core import App
 from lbfextract.fextract.schemas import Config, ReadFetcherConfig, AppExtraConfig
-from lbfextract.utils import load_temporary_bed_file, get_tmp_fextract_file_name, filter_bam, generate_time_stamp, \
-    check_input_bed, check_input_bam, filter_out_empty_bed_files
-from lbfextract.utils_classes import Signal
 from lbfextract.fextract_batch_coverage.schemas import PlotConfig
-from lbfextract.fextract_entropy.schemas import SignalSummarizer
+from lbfextract.fextract_entropy_in_batch.schemas import SignalSummarizer
 from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
 from lbfextract.fextract_fragment_length_distribution_in_batch.plugin import IntervalIteratorFld
-from lbfextract.plotting_lib.plotting_functions import plot_signal
+from lbfextract.plotting_lib.plotting_functions import plot_signal, plot_heatmap_kde_amplitude, plot_signal_batch
+from lbfextract.utils import load_temporary_bed_file, get_tmp_fextract_file_name, filter_bam, generate_time_stamp, \
+    check_input_bed, check_input_bam, filter_out_empty_bed_files, sanitize_file_name
+from lbfextract.utils_classes import Signal
 
 logger = logging.getLogger(__name__)
 
@@ -155,33 +155,108 @@ class FextractHooks:
         """
 
         summarized_signal_per_bed = [i for i in single_intervals_transformed_reads]
-        summarized_signal_per_bed = reduce(operator.ior, summarized_signal_per_bed, {})
+        summarized_signal_per_bed = pd.DataFrame(reduce(operator.ior, summarized_signal_per_bed, {})).T
 
         return Signal(
             array=summarized_signal_per_bed,
-            metadata=None,
+            metadata=summarized_signal_per_bed.index,
             tags=tuple(["relative_entropy_to_flanking_in_batch", ])
         )
 
     @lbfextract.hookimpl
-    def plot_signal(self, signal: Signal, extra_config: Any) -> matplotlib.figure.Figure:
+    def plot_signal(self, signal: Signal, extra_config: Any, config: PlotConfig) -> dict[str, pathlib.Path]:
         """
         :param signal: Signal object containing the signals per interval
         :param extra_config: extra configuration that may be used in the hook implementation
         """
+        fig_pths = {}
+        df = pd.DataFrame(signal.array, index=signal.metadata)
+        flanking = int((df.shape[1] // 5) * 2) if not config.flanking else config.flanking
+        fig_plot_heatmap_kde_amplitude, ax = plot_heatmap_kde_amplitude(
+            array=df,
+            title=" ".join(signal.tags),
+            title_font_size=config.title_font_size if config.title_font_size else 20,
+            general_font_size=config.general_font_size if config.general_font_size else 15,
+            tf_to_annotate=config.tf_to_annotate if config.tf_to_annotate else None,
+            ylabel=config.ylabel if config.ylabel else None,
+            flanking=flanking,
+            annotation_center_line=config.annotation_center_line if config.annotation_center_line else "interval center",
+            window_center=config.window_center if config.window_center else 50,
+            top=config.top if config.top else 5,
+            bottom=config.bottom if config.bottom else 5,
+
+        )
+        signal_type = "_".join(signal.tags)
+        time_stamp = generate_time_stamp()
+        run_id = extra_config.ctx["id"]
+        file_name = f"{time_stamp}__{run_id}__{signal_type}__heatmap_kde_amplitude_plot.png"
+        file_name_sanitized = sanitize_file_name(file_name)
+        output_path = extra_config.ctx["output_path"] / file_name_sanitized
+        fig_plot_heatmap_kde_amplitude.savefig(output_path, dpi=300)
+        fig_pths["plot_heatmap_kde_amplitude"] = output_path
+        plt.close(fig_plot_heatmap_kde_amplitude)
+
+        fig_plot_signal_batch, ax = plot_signal_batch(
+            df,
+            apply_savgol=config.apply_savgol if config.apply_savgol else False,
+            savgol_window_length=config.savgol_window_length if config.apply_savgol else 11,
+            savgol_polyorder=config.savgol_polyorder if config.apply_savgol else 3,
+            signal=signal_type,
+            title=f"{signal_type} all intervals",
+            color=config.color if config.color else "blue",
+            label=f"{signal_type} signal summary",
+            flanking=flanking,
+            xlabel=config.xlabel if config.xlabel else None,
+            window_center=config.window_center if config.window_center else 50,
+            top=config.top if config.top else 5,
+            bottom=config.bottom if config.bottom else 5,
+        )
+        file_name = f"{time_stamp}__{run_id}__{signal_type}__batch_signals.png"
+        file_name_sanitized = sanitize_file_name(file_name)
+        output_path = extra_config.ctx["output_path"] / file_name_sanitized
+        fig_plot_signal_batch.savefig(output_path, dpi=300)
+        fig_pths["plot_signal_batch"] = output_path
+        plt.close(fig_plot_signal_batch)
+
         time_stamp = generate_time_stamp()
         run_id = extra_config.ctx["id"]
         signal_type = "_".join(signal.tags) if signal.tags else ""
 
-        fig = None
-        for i in signal.array:
-            array = signal.array[i]
-            fig, ax = plot_signal(array, line_type="-")
+        for i in df.index.to_list():
+            array = df.loc[i].values
+            fig_plot_signal, ax = plot_signal(array, line_type="-")
             sample_name = extra_config.ctx["path_to_bam"].stem
-            fig.suptitle(f"{sample_name} {signal_type} {i}")
-            output_path = extra_config.ctx["output_path"] / f"{time_stamp}__{run_id}__{signal_type}__{i}__heatmap.png"
-            fig.savefig(output_path, dpi=300)
-        return fig
+            fig_plot_signal.suptitle(f"{sample_name} {signal_type} {i}")
+            file_name = f"{time_stamp}__{run_id}__{signal_type}__{i}__signal.png"
+            filename_sanitized = sanitize_file_name(file_name)
+            output_path = extra_config.ctx["output_path"] / filename_sanitized
+            fig_plot_signal.savefig(output_path, dpi=300)
+            fig_pths[i] = output_path
+            plt.close(fig_plot_signal)
+        return fig_pths
+
+    @lbfextract.hookimpl
+    def save_signal(self,
+                    signal: Signal,
+                    config: Any,
+                    extra_config: Any) -> pathlib.Path:
+        """
+        :param signal: Signal object containing the signals per interval
+        :param extra_config: extra configuration that may be used in the hook implementation
+        """
+
+        output_path = extra_config.ctx["output_path"]
+        time_stamp = generate_time_stamp()
+        run_id = extra_config.ctx["id"]
+        signal_type = "_".join(signal.tags)
+        file_name = f"{time_stamp}__{run_id}__{signal_type}__signal.csv"
+        file_name_sanitized = sanitize_file_name(file_name)
+        file_path = output_path / file_name_sanitized
+        logging.info(f"Saving signal to {file_path}")
+        df = pd.DataFrame(signal.array, index=signal.metadata)
+        pd.DataFrame(df).to_csv(file_path)
+
+        return file_path
 
 
 class CliHook:
@@ -256,7 +331,7 @@ class CliHook:
         @click.option("--w", default=5, type=int, show_default=True,
                       help="window used for the number of baseses around either the middle point in the fld_middle_around "
                            "or the number of bases around the center of the dyad in fld_dyad")
-        @click.option("--fld_type", 
+        @click.option("--fld_type",
                       type=click.Choice(["fld", "fld_middle", "fld_middle_n", "fld_dyad"],
                                         case_sensitive=False),
                       show_default=True, default="fld",
