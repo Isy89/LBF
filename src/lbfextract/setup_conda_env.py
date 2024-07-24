@@ -26,7 +26,7 @@ def check_compatible_platform():
 
 
 @click.command()
-def create_conda_envs():
+def create_conda_env():
     if not check_compatible_platform():
         raise "The OS is incompatible with the package please use either mac or linux"
     path_to_conda_env_yml = str(pathlib.Path(__file__).parent / "config" / "conda_env.yml")

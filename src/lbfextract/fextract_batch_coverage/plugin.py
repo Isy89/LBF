@@ -373,7 +373,8 @@ class FextractHooks:
 class CliHook:
     @lbfextract.hookimpl_cli
     def get_command(self) -> Union[click.Command, List[click.Command]]:
-        @click.command()
+        @click.command(
+            short_help="It extracts the fragment coverage signal from a BAM file for each BED file provided.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -488,7 +489,8 @@ class CliHook:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(
+            short_help="It extracts the coverage around dyads signal from a BAM file for each BED file provided.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -616,7 +618,8 @@ class CliHook:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(
+            short_help="It extracts the midpoint coverage signal from a BAM file for each BED file provided.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -730,7 +733,8 @@ class CliHook:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(short_help="It extracts the middle-n points coverage signal from a BAM file for each BED file "
+                                  "provided.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -847,7 +851,7 @@ class CliHook:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(short_help="It extracts the sliding window coverage signal from a BAM file for each BED file provided.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,

@@ -27,3 +27,4 @@ statsmodels
 PyComplexHeatmap~=1.6.7
 scikit_posthocs
 pyarrow~=15.0
+rich-click==1.8.3

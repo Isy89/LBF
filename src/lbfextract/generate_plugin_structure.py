@@ -1,6 +1,6 @@
 import warnings
 
-import click
+import rich_click as click
 import jinja2
 import shutil
 import pathlib

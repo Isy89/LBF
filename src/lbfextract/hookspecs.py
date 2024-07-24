@@ -66,7 +66,8 @@ class FextractHooksSpecs:
                 'Chromosome', 'Start', 'End', 'Name', 'Score', 'Strand', 'reads_per_interval'. 
             The reads_per_interval columns contains for each interval the pysam.libcalignment.IterRowRegion object 
             from which the reads are fetched or a least of reads
-        :param config: config specific to the function
+        :param config: configuration file containing the configuration object required by the transform_reads
+                       hook 
         :param extra_config: extra configuration that may be used in the hook implementation
         """
         pass
@@ -79,7 +80,8 @@ class FextractHooksSpecs:
                 'Chromosome', 'Start', 'End', 'Name', 'Score', 'Strand', 'reads_per_interval'. 
             The reads_per_interval columns contains for each interval the pysam.libcalignment.IterRowRegion object 
             from which the reads are fetched or a least of reads
-        :param config: config specific to the function
+        :param config: configuration file containing the configuration object required by the transform_single_intervals
+                       hook 
         :param extra_config: config containing context information plus extra parameters
         """
         pass
@@ -88,7 +90,7 @@ class FextractHooksSpecs:
     def transform_all_intervals(self, single_intervals_transformed_reads: Signal, config: Any, extra_config: Any):
         """
         :param single_intervals_transformed_reads: Signal object containing the signals per interval
-        :param config: config specific to the function
+        :param config: configuration file containing the configuration object required by the transform_all_intervals hook 
         :param extra_config: extra configuration that may be used in the hook implementation
         """
         pass
@@ -115,6 +117,7 @@ class FextractHooksSpecs:
     def plot_signal(self, signal: Signal, config: Any, extra_config: Any) -> matplotlib.figure.Figure:
         """
         :param signal: Signal object containing the signals per interval
+        :param config: configuration file containing the configuration object required by the plot_signal hook 
         :param extra_config: extra configuration that may be used in the hook implementation
         """
         pass
@@ -126,6 +129,7 @@ class FextractHooksSpecs:
                     extra_config: Any) -> None:
         """
         :param signal: Signal object containing the signals per interval
+        :param config: configuration file containing the configuration object required by the save_signal hook 
         :param extra_config: extra configuration that may be used in the hook implementation
         """
         pass

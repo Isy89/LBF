@@ -95,4 +95,4 @@ class Tracer(object):
 
 class ExternalModuleFilter(logging.Filter):
     def filter(self, record):
-        return record.name.startswith('lbfextract.')
+        return record.name.startswith('lbfextract')

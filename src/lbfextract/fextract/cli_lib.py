@@ -38,7 +38,7 @@ import pathlib
 import pickle
 from typing import Optional, Union, List
 
-import click
+import rich_click as click
 import numpy as np
 import pysam
 import scipy
@@ -91,8 +91,10 @@ class CliHook:
 
     @lbfextract.hookimpl_cli
     def get_command(self) -> click.Command:
-        @click.command()
-        @click.option('--plugins_name', default=None, multiple=True, help='Names of the plugin to register.')
+        @click.command(short_help="It extracts a signal from a BAM file using the hook implemented "
+                                  "by the available plugins.")
+        @click.option('--plugins_name', default=None, multiple=True,
+                      help='Names of the plugin to register.')
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -173,7 +175,9 @@ class CliHook:
 class CliHookExtractCoverage:
     @lbfextract.hookimpl_cli
     def get_command(self) -> Union[click.Command, List[click.Command]]:
-        @click.command()
+        @click.command(
+            short_help="It extracts the fragment coverage signal from a BAM file for all regions included in "
+                       "a BED file")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -292,7 +296,8 @@ class CliHookExtractCoverage:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(short_help="It extracts the WPS signal from a BAM and a BED files containing the regions to"
+                                  "be used.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -422,7 +427,7 @@ class CliHookExtractCoverage:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(short_help="It extract the coverage around dyads signal given a BAM and a BED files.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -552,7 +557,7 @@ class CliHookExtractCoverage:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(short_help="It extract the midpoint coverage given a BAM and a BED file.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -669,7 +674,8 @@ class CliHookExtractCoverage:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(short_help="It extracts middle n points coverage from a BAM and a BED files, where n describes "
+                                  "the bases around the midpoint to be retained.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -793,7 +799,8 @@ class CliHookExtractCoverage:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(short_help="It extracts the sliding window coverage. Each point is the average of the coverage "
+                                  "values of a window of neighboring values.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,
@@ -911,7 +918,7 @@ class CliHookExtractCoverage:
                       id=exp_id).run()
             return res
 
-        @click.command()
+        @click.command(short_help="It extract reds coverage using a part of the reads to be retained.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,

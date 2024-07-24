@@ -1,16 +1,38 @@
+import typing as t
+
 import bottleneck
 import numpy as np
-import pandas as pd
+import pysam
 
 from lbfextract.utils import adapt_indices
 
 
+class GenomiIntervalDataFrameRow(t.NamedTuple):
+    Start: int
+    End: int
+    Chromosome: str
+    reads_per_interval: t.Iterator[pysam.AlignedSegment]
+
+
 class TFBSCoverage:
-    def __init__(self, gc_correction: bool = False, tag: str = None):
+    """
+    This class calculates the fragment coverage for a genomic interval and allow the possibility to correct for GC bias
+    when a GC bias specific tag was added to each read in a BAM file.
+    """
+
+    def __init__(self, gc_correction: bool = False, tag: str = None) -> None:
+        """
+        : gc_correction : boolean value describing whether GC correction should be performed
+        : tag : BAM file tag to be used to correct for GC bias
+        """
         self.gc_correction = gc_correction
         self.tag = tag
 
-    def __call__(self, x: pd.Series):
+    def __call__(self, x: GenomiIntervalDataFrameRow) -> np.array:
+        """
+        : x : NamedTuple containing the genomic interval information and an iterator over the reads present in it 
+        """
+
         start = x.Start
         end = x.End
         region_length = end - start
@@ -60,7 +82,7 @@ class TFBSCoverageAroundDyads:
             s.append((n_s, n_e))
         return s
 
-    def __call__(self, x: pd.Series):
+    def __call__(self, x: GenomiIntervalDataFrameRow):
         start = x.Start
         end = x.End
         region_length = end - start
@@ -80,7 +102,7 @@ class TFBSMiddlePointCoverage:
         self.gc_correction = gc_correction
         self.tag = tag
 
-    def __call__(self, x: pd.Series):
+    def __call__(self, x: GenomiIntervalDataFrameRow):
         start = x.Start
         end = x.End
         region_length = end - start
@@ -102,7 +124,7 @@ class TFBSNmiddlePointCoverage:
         self.gc_correction = gc_correction
         self.tag = tag
 
-    def __call__(self, x: pd.Series):
+    def __call__(self, x: GenomiIntervalDataFrameRow):
         start = x.Start
         end = x.End
         region_length = end - start
@@ -124,7 +146,7 @@ class TFBSSlidingWindowCoverage:
         self.gc_correction = gc_correction
         self.tag = tag
 
-    def __call__(self, x: pd.Series):
+    def __call__(self, x: GenomiIntervalDataFrameRow):
         start = x.Start
         end = x.End
         region_length = end - start
@@ -147,7 +169,7 @@ class FragmentLengthDistribution:
         self.gc_correction = gc_correction
         self.tag = tag
 
-    def __call__(self, x: pd.Series):
+    def __call__(self, x: GenomiIntervalDataFrameRow):
         start = x.Start
         end = x.End
         region_length = end - start
@@ -177,7 +199,7 @@ class PeterUlzCoverage:
         self.read_start = read_start
         self.read_end = read_end
 
-    def __call__(self, x: pd.Series):
+    def __call__(self, x: GenomiIntervalDataFrameRow):
         start = x.Start
         end = x.End
         region_length = end - start
@@ -213,7 +235,7 @@ class WPSCoverage(TFBSCoverage):
         indices_end = adapt_indices(ending_start, ending_end, region_length)
         return indices_start, indices_end
 
-    def __call__(self, x: pd.Series):
+    def __call__(self, x: GenomiIntervalDataFrameRow):
         start = x.Start
         end = x.End
         region_length = end - start
@@ -225,7 +247,8 @@ class WPSCoverage(TFBSCoverage):
             gc_coef = read.get_tag(self.tag) if self.gc_correction and read.has_tag(self.tag) else 1
             relative_start = read.pos - start
             relative_end = relative_start + read.template_length
-            indices = adapt_indices(relative_start + (self.window_size // 2), relative_end - (self.window_size//2), region_length)
+            indices = adapt_indices(relative_start + (self.window_size // 2), relative_end - (self.window_size // 2),
+                                    region_length)
             indices_start, indices_end = self.get_minus_one_indices(relative_start, relative_end, region_length)
             if indices_start is not None:
                 regions_minus_one[indices_start] += 1 * gc_coef
@@ -233,6 +256,5 @@ class WPSCoverage(TFBSCoverage):
                 regions_minus_one[indices_end] += 1 * gc_coef
             if indices is not None:
                 regions_plus_one[indices] += 1 * gc_coef
-        wps_g = (regions_plus_one - regions_minus_one) 
+        wps_g = (regions_plus_one - regions_minus_one)
         return wps_g - bottleneck.move_median(wps_g, window=100, min_count=1)
-

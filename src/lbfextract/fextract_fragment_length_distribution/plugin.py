@@ -234,7 +234,9 @@ class CliHook:
 
     @lbfextract.hookimpl_cli
     def get_command(self) -> click.Command:
-        @click.command()
+        @click.command(
+            short_help="It extracts the fragment length distribution signal from a BAM file for a BED file provided."
+        )
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,

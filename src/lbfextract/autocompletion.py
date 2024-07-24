@@ -1,7 +1,10 @@
 import os
 
-import click
+import rich_click as click
 from os.path import expanduser
+import logging
+
+logger = logging.getLogger(__name__)
 
 home = expanduser("~")
 
@@ -43,9 +46,11 @@ _lbfextract_completion_setup;
 def enable_autocompletion():
     with open(home + '/.lbfextract-complete.bash', 'w') as f:
         f.write(lbfextract_completion)
-    print(home + '/.bashrc')
     with open(home + '/.bashrc', 'a') as f:
         f.write('source ~/.lbfextract-complete.bash')
+    logger.info("Autocompletion was enabled. To use it, open a new terminal or run `source ~/.bashrc`. "
+                "In the latter case it may be needed to deactivate and reactivate your conda environment."
+                "Run `conda deactivate && conda activate your_conda_env_where_LBF_is_installed`")
 
 
 @click.command()
@@ -55,10 +60,12 @@ def disable_autocompletion():
 
     with open(home + '/.bashrc', 'w') as f:
         for line in lines:
-            if line != 'source ~/.lbfextract-complete.bash':
+            if line.strip() != 'source ~/.lbfextract-complete.bash':
                 f.write(line)
 
     os.remove(home + '/.lbfextract-complete.bash')
+    logger.info("Autocompletion was disabled.")
+
 
 
 if __name__ == "__main__":

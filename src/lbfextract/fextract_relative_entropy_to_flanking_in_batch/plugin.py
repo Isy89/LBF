@@ -262,7 +262,8 @@ class FextractHooks:
 class CliHook:
     @lbfextract.hookimpl_cli
     def get_command(self) -> click.Command:
-        @click.command()
+        @click.command(short_help="It extracts the relative fragment entropy (RFE) (relative entropy to flanking)"
+                                  " signal from a BAM file for each BED file provided.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,

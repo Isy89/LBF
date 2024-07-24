@@ -10,12 +10,16 @@ def flatten_list(l):
 
 
 class FeatureExtractor:
+    """
+    This object provide a python interface to all feature extraction methods implemented. 
+    All commands can be used from python trhough this object.
+    """
 
     def __init__(self):
         pm = get_pluggin_manager()
         self.extractors = {i.name.replace("-", "_"): i for i in flatten_list(pm.hook.get_command())}
 
-    def extract(self, extractor_name, **kwargs):
+    def extract(self, extractor_name: str, **kwargs):
         dict_params = {param.name: param.default for param in self.extractors[extractor_name].params}
         dict_params.update(kwargs)
         return self.extractors[extractor_name].callback(**dict_params)

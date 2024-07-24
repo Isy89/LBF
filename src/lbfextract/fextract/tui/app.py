@@ -5,16 +5,17 @@ import hashlib
 import logging
 import pathlib
 import sys
-import click
-from lbfextract.feature_extractor import FeatureExtractor
+from asyncio.subprocess import PIPE, STDOUT
+
+import rich_click as click
 from rich import print
 from rich.markdown import Markdown
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, Container
 from textual.widgets import Input, Button, Static, Header, Footer, Checkbox, Welcome
-from asyncio.subprocess import PIPE, STDOUT
 
 import lbfextract.fextract
+from lbfextract.feature_extractor import FeatureExtractor
 from lbfextract.fextract.tui.my_directory_tree import DirectoryTree
 
 
@@ -317,7 +318,7 @@ class FextractApp(App):
         self.query_one(f"#{self.pressed_botton}").remove_class("pressed")
 
 
-@click.command()
+@click.command(short_help="It starts the Terminal User Interface (TUI)")
 @click.option('--path_to_root_dir', type=click.Path(exists=False,
                                                     file_okay=True,
                                                     dir_okay=True,
@@ -331,6 +332,10 @@ class FextractApp(App):
 @click.option('--signal_type', type=str, default="extract_coverage",
               help='signal type to extract from the bam file')
 def start_tui(path_to_root_dir: str, signal_type: str):
+    """
+    Starts the Text User Interface (TUI) for feature extraction.
+    Use this command to launch the TUI and specify the directory tree root and signal type as needed.
+    """
     app = FextractApp(path=path_to_root_dir, signal_type=signal_type)
     sys.exit(app.run())
 

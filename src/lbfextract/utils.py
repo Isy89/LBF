@@ -27,20 +27,6 @@ from lbfextract.utils_classes import TimerAndMemoryProfiler, Tracer
 logger = logging.getLogger(__name__)
 
 
-@TimerAndMemoryProfiler(debug=lbfextract.PROFILER_DEBUG, timer_logger=logger)
-@Tracer(debug=lbfextract.PROFILER_DEBUG, logger=logger)
-def split_array_in_regions(array, rows, cols):
-    columns = np.array_split(array, cols, 1)
-    matrix = [np.array_split(ar, rows, 0) for ar in columns]
-    return matrix
-
-
-@TimerAndMemoryProfiler(debug=lbfextract.PROFILER_DEBUG, timer_logger=logger)
-@Tracer(debug=lbfextract.PROFILER_DEBUG, logger=logger)
-def join_splitted_arrays(splitted_matrix):
-    columns = [np.vstack(col) for col in splitted_matrix]
-    return np.hstack(columns)
-
 
 @Tracer(debug=lbfextract.PROFILER_DEBUG, logger=logger)
 def adapt_indices(start, end, length_region):
