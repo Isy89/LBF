@@ -89,7 +89,6 @@ def cli_feature_extraction(context_settings=CONTEXT_SETTINGS):
             lbfextract feature_extraction_commands [command] --help
         \n
     """
-    print("here")
     check_conda_env_is_present()
 
 

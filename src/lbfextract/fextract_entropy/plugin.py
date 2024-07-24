@@ -5,18 +5,17 @@ from typing import List
 import click
 import matplotlib
 import numpy as np
-import scipy.stats
 from matplotlib import pyplot as plt
+from scipy.stats import entropy
 
 import lbfextract.fextract
 from lbfextract.core import App
 from lbfextract.fextract.schemas import Config, AppExtraConfig, ReadFetcherConfig
+from lbfextract.fextract_fragment_length_distribution.plugin import calculate_reference_distribution, get_peaks
+from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
+from lbfextract.plotting_lib.plotting_functions import plot_signal
 from lbfextract.utils import generate_time_stamp, sanitize_file_name
 from lbfextract.utils_classes import Signal
-from lbfextract.plotting_lib.plotting_functions import plot_signal
-from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
-from lbfextract.fextract_fragment_length_distribution.plugin import calculate_reference_distribution, get_peaks
-from scipy.stats import entropy
 
 
 class FextractHooks:
@@ -44,15 +43,24 @@ class FextractHooks:
     def plot_signal(self, signal: Signal,
                     config: Any,
                     extra_config: AppExtraConfig) -> matplotlib.figure.Figure:
+        big_fs = 20
+        medium_fs = 15
+
         signal_type = "_".join(signal.tags) if signal.tags else ""
         with plt.style.context('seaborn-v0_8-whitegrid'):
             fig, ax = plt.subplots(1, figsize=(10, 10))
-            ax.set_title(f"{signal_type}\n"
-                         f"patient: {extra_config.ctx['path_to_bam'].stem} "
-                         f"bed file: {extra_config.ctx['path_to_bed'].stem.split('.', 1)[0]}", fontsize=20)
+            title = (
+                f"SIGNAL TYPE: {signal_type}\n"
+                f"ID: {extra_config.ctx['path_to_bam'].stem} \n"
+                f"BED file: {extra_config.ctx['path_to_bed'].stem.split('.', 1)[0]}"
+            )
+            ax.set_title(title, fontsize=big_fs)
             fig, _ = plot_signal(signal.array, apply_savgol=False, ax=ax, fig=fig, label=signal_type)
-            ax.set_ylabel(signal_type)
-            ax.set_xlabel("Position")
+            ax.set_ylabel(signal_type.capitalize(), fontsize=medium_fs)
+            ax.set_xlabel("Position", fontsize=medium_fs)
+            ax.set_xticklabels(ax.get_xticklabels(), fontsize=medium_fs)
+            ax.set_yticklabels(ax.get_yticklabels(), fontsize=medium_fs)
+            ax.legend(fontsize=medium_fs)
         file_name = f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.png"
         file_name_sanitized = sanitize_file_name(file_name)
         fig.savefig(extra_config.ctx["output_path"] / file_name_sanitized, dpi=300)
@@ -219,7 +227,6 @@ class CliHook:
             output_path_interval_spec.mkdir(parents=True, exist_ok=True)
             res = App(plugins_name=["entropy",
                                     "fragment_length_distribution"],
-                      # more plugin names can be added here to inherit hooks from them
                       path_to_bam=path_to_bam,
                       path_to_bed=path_to_bed,
                       output_path=output_path_interval_spec,
