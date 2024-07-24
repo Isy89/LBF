@@ -50,8 +50,13 @@ class IntervalIteratorRelativeEntropyFlanking(IntervalIteratorFld):
     @staticmethod
     def get_entropy(array):
         array += 1e-10
-        array /= array.sum(axis=0)
-        entropy = np.apply_along_axis(scipy.stats.entropy, 0, array)
+        mask_invalid = np.logical_or(
+            ~np.isfinite(array),
+            array <= 0
+        )
+        marr = np.ma.masked_array(array, mask=mask_invalid)
+        marr /= marr.sum(axis=0)
+        entropy = scipy.stats.entropy(marr, axis=0)
         return entropy
 
 
@@ -170,7 +175,7 @@ class FextractHooks:
             fig, ax = plot_signal(array, line_type="-")
             sample_name = extra_config.ctx["path_to_bam"].stem
             fig.suptitle(f"{sample_name} {signal_type} {i}".capitalize(), fontsize=20)
-            file_name =  f"{time_stamp}__{run_id}__{signal_type}__{i}__heatmap.png"
+            file_name = f"{time_stamp}__{run_id}__{signal_type}__{i}__heatmap.png"
             file_name_sanitized = sanitize_file_name(file_name)
             output_path = extra_config.ctx["output_path"] / file_name_sanitized
             fig.savefig(output_path, dpi=300)

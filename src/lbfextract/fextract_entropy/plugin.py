@@ -16,6 +16,8 @@ from lbfextract.utils_classes import Signal
 from lbfextract.plotting_lib.plotting_functions import plot_signal
 from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
 from lbfextract.fextract_fragment_length_distribution.plugin import calculate_reference_distribution, get_peaks
+from scipy.stats import entropy
+
 
 class FextractHooks:
 
@@ -28,13 +30,14 @@ class FextractHooks:
         :param extra_config: extra configuration that may be used in the hook implementation
         """
         single_intervals_transformed_reads.array += 1e-10
-        single_intervals_transformed_reads.array /= single_intervals_transformed_reads.array.sum(axis=0)
+        mask_invalid = np.logical_or(
+            ~np.isfinite(single_intervals_transformed_reads.array),
+            single_intervals_transformed_reads.array <= 0
+        )
+        marr = np.ma.masked_array(single_intervals_transformed_reads.array, mask=mask_invalid)
+        marr /= marr.sum(axis=0)
+        entropy_array = entropy(marr, axis=0)
 
-        def compute_column_entropies(array):
-            transposed_array = np.zeros_like(array.T)
-            return np.apply_along_axis(scipy.stats.entropy, 1, transposed_array)
-
-        entropy_array = compute_column_entropies(single_intervals_transformed_reads.array)
         return Signal(array=entropy_array, tags=("entropy",), metadata=None)
 
     @lbfextract.hookimpl
