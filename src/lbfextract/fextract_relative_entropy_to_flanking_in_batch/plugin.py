@@ -192,7 +192,7 @@ class FextractHooks:
         file_name = f"{time_stamp}__{run_id}__{signal_type}__heatmap_kde_amplitude_plot.png"
         file_name_sanitized = sanitize_file_name(file_name)
         output_path = extra_config.ctx["output_path"] / file_name_sanitized
-        fig_plot_heatmap_kde_amplitude.savefig(output_path, dpi=300)
+        fig_plot_heatmap_kde_amplitude.savefig(output_path, dpi=600)
         fig_pths["plot_heatmap_kde_amplitude"] = output_path
         plt.close(fig_plot_heatmap_kde_amplitude)
 
@@ -214,7 +214,7 @@ class FextractHooks:
         file_name = f"{time_stamp}__{run_id}__{signal_type}__batch_signals.png"
         file_name_sanitized = sanitize_file_name(file_name)
         output_path = extra_config.ctx["output_path"] / file_name_sanitized
-        fig_plot_signal_batch.savefig(output_path, dpi=300)
+        fig_plot_signal_batch.savefig(output_path, dpi=600)
         fig_pths["plot_signal_batch"] = output_path
         plt.close(fig_plot_signal_batch)
 
@@ -230,7 +230,7 @@ class FextractHooks:
             file_name = f"{time_stamp}__{run_id}__{signal_type}__{i}__signal.png"
             filename_sanitized = sanitize_file_name(file_name)
             output_path = extra_config.ctx["output_path"] / filename_sanitized
-            fig_plot_signal.savefig(output_path, dpi=300)
+            fig_plot_signal.savefig(output_path, dpi=600)
             fig_pths[i] = output_path
             plt.close(fig_plot_signal)
         return fig_pths

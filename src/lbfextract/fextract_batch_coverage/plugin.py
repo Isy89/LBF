@@ -260,10 +260,10 @@ class FextractHooks:
         """
 
         summary_method = {
-            "mean": np.mean,
-            "median": np.median,
-            "max": np.max,
-            "min": np.min,
+            "mean": np.nanmean,
+            "median": np.nanmedian,
+            "max": np.nanmax,
+            "min": np.nanmin,
         }
         single_intervals_transformed_reads.set_signal_summarizer(summary_method[config.summarization_method])
 
@@ -287,6 +287,12 @@ class FextractHooks:
         :param config: object containing the parameters of the plot
         :param extra_config: extra configuration that may be used in the hook implementation
         """
+        big_fs = 20
+        medium_fs = 15
+
+        top = config.top if config.top else 5
+        bottom = config.bottom if config.bottom else 5
+
         fig_pths = {}
         df = pd.DataFrame(signal.array, index=signal.metadata)
         flanking = int((df.shape[1] // 5) * 2) if not config.flanking else config.flanking
@@ -300,8 +306,8 @@ class FextractHooks:
             flanking=flanking,
             annotation_center_line=config.annotation_center_line if config.annotation_center_line else "interval center",
             window_center=config.window_center if config.window_center else 50,
-            top=config.top if config.top else 5,
-            bottom=config.bottom if config.bottom else 5,
+            top=top,
+            bottom=bottom,
         )
         signal_type = "_".join(signal.tags)
         time_stamp = generate_time_stamp()
@@ -309,7 +315,7 @@ class FextractHooks:
         file_name = f"{time_stamp}__{run_id}__{signal_type}__heatmap_kde_amplitude_plot.png"
         file_name_sanitized = sanitize_file_name(file_name)
         output_path = extra_config.ctx["output_path"] / file_name_sanitized
-        fig_plot_heatmap_kde_amplitude.savefig(output_path, dpi=300)
+        fig_plot_heatmap_kde_amplitude.savefig(output_path, dpi=600)
         fig_pths["plot_heatmap_kde_amplitude"] = output_path
         plt.close(fig_plot_heatmap_kde_amplitude)
 
@@ -319,30 +325,43 @@ class FextractHooks:
             savgol_window_length=config.savgol_window_length if config.apply_savgol else 11,
             savgol_polyorder=config.savgol_polyorder if config.apply_savgol else 3,
             signal=signal_type,
-            title=f"{signal_type} all intervals".capitalize(),
+            title=f"{signal_type.capitalize()} top and bottom BED files\n(ranked by accessibility)",
             color=config.color if config.color else "blue",
             label=f"{signal_type} signal summary",
             flanking=flanking,
             xlabel=config.xlabel if config.xlabel else None,
             window_center=config.window_center if config.window_center else 50,
-            top=config.top if config.top else 5,
-            bottom=config.bottom if config.bottom else 5,
+            top=top,
+            bottom=bottom,
+            figsize=(20, 10),
+
         )
         file_name = f"{time_stamp}__{run_id}__{signal_type}__batch_signals.png"
         file_name_sanitized = sanitize_file_name(file_name)
         output_path = extra_config.ctx["output_path"] / file_name_sanitized
-        fig_plot_signal_batch.savefig(output_path, dpi=300)
+        fig_plot_signal_batch.savefig(output_path, dpi=600)
         fig_pths["plot_signal_batch"] = output_path
         plt.close(fig_plot_signal_batch)
 
         for i in range(df.shape[0]):
             file_name = f"{time_stamp}__{run_id}__{signal_type}__{df.index[i]}__signal.png"
             file_name_sanitized = sanitize_file_name(file_name)
+            title = (
+                f"SIGNAL TYPE: {signal_type}\n"
+                f"ID: {extra_config.ctx['path_to_bam'].stem}\n"
+                f"BED file: {df.index[i]}"
+            )
             fig_plot_signal, ax = plot_signal(df.iloc[i, :].values,
                                               label="center",
-                                              title=f"{signal_type} interval {df.index[i]}".capitalize())
+                                              title=title,
+                                              title_font_size=big_fs,
+                                              general_font_size=medium_fs)
+            ax.set_ylabel(signal_type, fontsize=medium_fs)
+            ax.set_xlabel("Position", fontsize=medium_fs)
+            ax.set_xticklabels(ax.get_xticklabels(), fontsize=medium_fs)
+            ax.set_yticklabels(ax.get_yticklabels(), fontsize=medium_fs)
             output_path = extra_config.ctx["output_path"] / file_name_sanitized
-            fig_plot_signal.savefig(output_path, dpi=300)
+            fig_plot_signal.savefig(output_path, dpi=600)
             fig_pths[i] = output_path
             plt.close(fig_plot_signal)
 
@@ -851,7 +870,8 @@ class CliHook:
                       id=exp_id).run()
             return res
 
-        @click.command(short_help="It extracts the sliding window coverage signal from a BAM file for each BED file provided.")
+        @click.command(
+            short_help="It extracts the sliding window coverage signal from a BAM file for each BED file provided.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,

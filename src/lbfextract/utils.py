@@ -7,6 +7,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import typing as t
 from datetime import datetime
 from typing import Tuple
 
@@ -27,14 +28,25 @@ from lbfextract.utils_classes import TimerAndMemoryProfiler, Tracer
 logger = logging.getLogger(__name__)
 
 
-
 @Tracer(debug=lbfextract.PROFILER_DEBUG, logger=logger)
-def adapt_indices(start, end, length_region):
+def adapt_indices(start: int, end: int, length_region: int) -> t.Union[np.array, None]:
+    """
+    Adapt and adjust indices to fit within a specified region length.
+
+    :param start: The starting index.
+    :param end: The ending index.
+    :param length_region: The length of the region within which the indices must fit.
+    :return: A numpy array of indices from the adjusted start to end, or None if the
+             start index is not less than the end index after adjustment.
+    """
     if end < 0:
         end = 0
-    elif end > length_region:
-        end = length_region if 0 <= start < length_region else 0
-    start = start if 0 <= start < length_region else 0
+    if start < 0:
+        start = 0
+    if end > length_region:
+        end = length_region
+    if start > length_region:
+        start = length_region
     if start < end:
         return np.arange(start, end)
     else:
@@ -292,7 +304,7 @@ def write_yml(dictionary, file_name):
 
 def generate_time_stamp():
     data_time_obj = datetime.now()
-    time_stamp = data_time_obj.strftime("%Y%m%d__%H:%M:%S_%f")
+    time_stamp = data_time_obj.strftime("%Y%m%d__%H-%M-%S_%f")
     return time_stamp
 
 

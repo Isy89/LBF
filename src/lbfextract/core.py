@@ -49,11 +49,13 @@ def get_plugin_manager(plugins_to_be_registered: List[str]) -> pluggy.PluginMana
 
 class App:
     """
-    This object is the main object of the LBFextract package. This object implements the signal extraction workflow.
-    Each step of the workflow is represented by a hook. Hooks are implemneted by plugins, which are loaded by the
-    plugin manager. Given a BAM file, a BED file and all the configuration needded for the different steps, it extracts
-    the reads corresponding to the intervals specified in the BED file entries, save them, extracts the signal and save it
-    together with possibly generated plots.
+    The main object of the LBFextract package, implementing the signal extraction workflow.
+
+    This class orchestrates the workflow for extracting signals from genomic data. Each step 
+    in the workflow is managed by hooks, which are implemented by plugins loaded through a 
+    plugin manager. Given a BAM file, a BED file, and the necessary configurations, this 
+    class extracts reads corresponding to the intervals specified in the BED file, saves them, 
+    extracts the signal, and optionally generates and saves plots.
     """
 
     def __init__(self,
@@ -73,6 +75,26 @@ class App:
                  extra_config: AppExtraConfig = None,
                  id: str = None,
                  debug: bool = False):
+        """
+        Initialize the App with the provided configuration.
+
+        :param plugins_name: List of plugin names to be registered for the workflow.
+        :param path_to_bam: Path to the BAM file containing the sequencing reads.
+        :param path_to_bed: Path to the BED file specifying the intervals of interest.
+        :param output_path: Directory where the output files will be saved.
+        :param skip_read_fetching: If True, skips the read fetching step.
+        :param read_fetcher_config: Configuration for the read fetching step.
+        :param save_fetched_reads_config: Configuration for saving fetched reads.
+        :param load_reads_config: Configuration for loading reads.
+        :param reads_transformer_config: Configuration for transforming reads.
+        :param single_signal_transformer_config: Configuration for transforming single signals.
+        :param transform_all_intervals_config: Configuration for transforming signals across all intervals.
+        :param plot_signal_config: Configuration for plotting the signals.
+        :param save_signal_config: Configuration for saving the signals.
+        :param extra_config: Additional configuration options.
+        :param id: Unique identifier for this instance of the App. If None, a UUID will be generated.
+        :param debug: If True, enables debug mode.
+        """
 
         self.id = id or str(uuid.uuid1())
         self.plugins_name = plugins_name
@@ -117,6 +139,15 @@ class App:
             )
 
     def _get_run_id(self):
+        """
+        Generate a unique run ID based on the extra configuration.
+
+        This method creates a SHA-1 hash from the JSON-encoded extra configuration dictionary.
+        The extra configuration is sorted by keys and converted to a string to ensure consistency
+        in the generated hash. The resulting hash is used as a unique identifier for the current run.
+
+        :return: A SHA-1 hash string representing the unique run ID.
+        """
         h = hashlib.sha1()
         h.update(json.dumps(self.extra_config, sort_keys=True, default=str).encode())
         return h.hexdigest()

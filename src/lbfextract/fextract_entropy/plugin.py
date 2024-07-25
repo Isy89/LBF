@@ -63,7 +63,7 @@ class FextractHooks:
             ax.legend(fontsize=medium_fs)
         file_name = f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.png"
         file_name_sanitized = sanitize_file_name(file_name)
-        fig.savefig(extra_config.ctx["output_path"] / file_name_sanitized, dpi=300)
+        fig.savefig(extra_config.ctx["output_path"] / file_name_sanitized, dpi=600)
         return fig
 
 
@@ -211,7 +211,7 @@ class CliHook:
                 distribution = calculate_reference_distribution(path_to_sample=path_to_bam,
                                                                 min_length=min_fragment_length,
                                                                 max_length=max_fragment_length,
-                                                                chr="chr12",
+                                                                chr_name="chr12",
                                                                 start=34_300_000,
                                                                 end=34_500_000
                                                                 )

@@ -24,25 +24,40 @@ def plot_signal(summary: np.array,
                 color: Union[int, str] = None,
                 label: str = None,
                 label_center_line: str = None,
-                title=None,
-                title_font_size=20,
-                general_font_size=15,
-                plot_center_line_label=True,
-                line_type="-") -> tuple[Figure, Axes]:
+                title: str = None,
+                title_font_size: int = 20,
+                general_font_size: int = 15,
+                plot_center_line_label: bool = True,
+                line_type: str = "-") -> tuple[Figure, Axes]:
     """
-    function to plot the signal summarised according to a specific function
+    Plot a signal with optional Savitzky-Golay smoothing.
 
-    :param summary: signal per position
-    :param apply_savgol: whether the smoothing need to be applied
-    :param savgol_window_length: length of the window used to smooth
-    :param savgol_polyorder: order of polynomial used by the savgol filter
-    :param ax: matplotlib axis of the plot
-    :param fig: matplotlib Figure
-    :param color:
-    :param label:
-    :return:
+    This function plots the given signal, optionally applying a Savitzky-Golay
+    filter to smooth the data. Various customization options for the plot are
+    available, including axis, figure, color, labels, and title settings.
+
+    :param summary: A numpy array containing the signal data to be plotted.
+    :param apply_savgol: A boolean flag indicating whether to apply Savitzky-Golay
+                         smoothing to the signal. Default is True.
+    :param savgol_window_length: The length of the window used for Savitzky-Golay
+                                 smoothing. Must be an odd integer. Default is 33.
+    :param savgol_polyorder: The order of the polynomial used for Savitzky-Golay
+                             smoothing. Default is 3.
+    :param ax: A matplotlib Axes object to plot on. If None, a new axis will be created.
+    :param fig: A matplotlib Figure object to plot on. If None, a new figure will be created.
+    :param color: The color of the plot line. Can be a string (e.g., 'r' or 'blue') or an
+                  integer. If None, the default color will be used.
+    :param label: A label for the plot line. This will be used in the legend if provided.
+    :param label_center_line: A label for the center line, if it is plotted.
+    :param title: The title of the plot. If None, no title will be displayed.
+    :param title_font_size: The font size of the title. Default is 20.
+    :param general_font_size: The general font size for the plot text. Default is 15.
+    :param plot_center_line_label: A boolean flag indicating whether to plot the center line label.
+                                   Default is True.
+    :param line_type: The type of line to plot (e.g., '-', '--', '-.', ':'). Default is '-'.
+
+    :return: A tuple containing the matplotlib Figure and Axes objects used for the plot.
     """
-
     if ax is None:
         fig, ax = plt.subplots(1, figsize=(10, 10))
 
@@ -61,14 +76,16 @@ def plot_signal(summary: np.array,
                             savgol_polyorder) if std is not None else None
 
     ax.plot(summary, label=f"{label}" if label else "signal summary", c=color, linestyle=line_type)
+    plus_minus = u"\u00B1"
     if std is not None:
         color = "lightgray"
-        ax.fill_between(np.arange(summary.shape[0]), summary - std, summary + std, alpha=0.5, color=color)
+        ax.fill_between(np.arange(summary.shape[0]), summary - std, summary + std, alpha=0.5, color=color,
+                        label=plus_minus + "std")
 
     label_center_line = label_center_line if label_center_line else "TFBS center" if plot_center_line_label else None
 
     ax.set_xticks([0, summary.shape[0] // 2, summary.shape[0]],
-                  labels=[-(summary.shape[0] // 2), 0, summary.shape[0] // 2])
+                  labels=["-" + str(summary.shape[0] // 2), 0, "+" + str(summary.shape[0] // 2)])
     ax.axvline(summary.shape[0] // 2, ls="-.", color="red",
                label=label_center_line)
     ax.legend()
@@ -82,24 +99,25 @@ def plot_signal_batch(df: pd.DataFrame,
                       apply_savgol: bool = False,
                       savgol_window_length: int = 11,
                       savgol_polyorder: int = 3,
-                      signal="coverage",
-                      title="coverage at TFBS",
-                      figsize=(20, 10),
-                      ax=None,
-                      fig=None,
-                      color=None,
-                      label=None,
-                      alpha=1,
-                      linewidth=1,
-                      flanking=1500,
-                      xlabel=None,
-                      top=5,
-                      bottom=5,
-                      window_center=50,
-                      mask_rows=None,
+                      signal: str = "coverage",
+                      title: str = "coverage at TFBS",
+                      figsize: tuple[int, int] = (20, 10),
+                      ax: Axes = None,
+                      fig: Figure = None,
+                      color: str = None,
+                      label: str = None,
+                      alpha: float = 1,
+                      linewidth: int = 1,
+                      flanking: int = 1500,
+                      xlabel: str = None,
+                      top: int = 5,
+                      bottom: int = 5,
+                      window_center: int = 50,
+                      mask_rows: list[bool] = None,
+                      max_signals: int = 10
                       ) -> tuple[Figure, Axes]:
     """
-    Plots the signal for the top and bottom BED files based on their peak or deep in the central part of the signal one 
+    Plots the signal for the top and bottom BED files based on their peak or deep in the central part of the signal one
     next to the others optionally using Savitzky-Golay filter and various customization options.
 
     :param df: The DataFrame containing the signal data to plot.
@@ -119,73 +137,101 @@ def plot_signal_batch(df: pd.DataFrame,
     :param xlabel: The label for the x-axis. Default is None.
     :param top: The number of top rows to consider for analysis. Default is 5.
     :param bottom: The number of bottom rows to consider for analysis. Default is 5.
-    :param window_center: The number of base pairs to consider around the center for amplitude calculation. Default is 
+    :param window_center: The number of base pairs to consider around the center for amplitude calculation. Default is
                           50.
     :param mask_rows: The mask rows to apply to the DataFrame. Default is None.
-
+    :param max_signals: It describes the maximum number of BED files signals to be plotted.
     :return: A tuple containing the figure and axes objects (fig, ax).
     """
 
     df = df.copy()
+    n_intervals = df.shape[0]
+    bps = df.shape[1]
+    n = max_signals
 
-    if df.shape[0] > 20:
-        if top + bottom > df.shape[0]:
-            logger.error(f"top + bottom is too large, it should be less than {df.shape[0]}")
-            top = 10
+    if (top + bottom > n >= n_intervals) or (n >= top + bottom >= n_intervals):
+        top, bottom = n_intervals // 2, n_intervals // 2
 
-        if flanking * 2 > df.shape[1]:
-            logger.error(f"flanking is too large, it should be less than {df.shape[1] // 2}")
-            flanking = (df.shape[1] // 5) * 2
+    if (top + bottom > n_intervals > n) or (n_intervals > top + bottom > n):
+        top, bottom = n // 2, n // 2
 
-        if window_center * 2 > df.shape[1]:
-            logger.error(f"window_center is too large, it should be less than {df.shape[1] // 2}")
+    two_fifths = (bps // 5) * 2
 
-        mask = np.logical_or(np.arange(df.shape[1]) <= flanking,
-                             np.arange(df.shape[1]) > df.shape[1] - flanking)
-        center = df.shape[1] // 2
+    if flanking > two_fifths:
+        logger.warning(f"flanking is too large, {two_fifths} will be used instead")
+        flanking = two_fifths
 
-        df["amplitude"] = df.iloc[:, center - window_center: center + window_center].mean(axis=1) / df.iloc[:,
-                                                                                                    mask].mean(axis=1)
+    if window_center > two_fifths / 4:
+        logger.warning(f"window_center is too large, {two_fifths / 4} will be used instead")
+        window_center = two_fifths / 4
 
-        if mask_rows is None:
-            mask_rows = np.logical_or(np.arange(df.shape[0]) <= bottom, np.arange(df.shape[0]) > df.shape[0] - top)
-            df = df.sort_values(by="amplitude", ascending=False).iloc[mask_rows, :-2]
-        else:
-            df = df.iloc[mask_rows, :-2]
-
+    mask_indices = np.arange(bps)
+    mask = np.logical_or(
+        mask_indices <= flanking,
+        mask_indices > bps - flanking
+    )
+    center = bps // 2
+    df["amplitude"] = (
+            df.iloc[:, center - window_center: center + window_center]
+            .mean(axis=1) / df.iloc[:, mask].mean(axis=1)
+    )
+    indices_intervals = np.arange(n_intervals)
+    if mask_rows is None:
+        mask_rows = np.logical_or(
+            indices_intervals < bottom,
+            indices_intervals >= n_intervals - top
+        )
+    df = df.sort_values(by="amplitude", ascending=False)
+    df = df.iloc[mask_rows, :-2]
+    n_intervals = df.shape[0]
+    bps = df.shape[1]
     plus_minus = u"\u00B1"
     if not fig:
         fig, ax = plt.subplots(figsize=figsize)
         fig.suptitle(title, fontsize=20)
         ax.set_xlabel(xlabel if xlabel else "signal per interval", fontsize=15)
         ax.set_ylabel(signal, fontsize=15)
+
     if apply_savgol:
         index = df.index.copy()
         df = savgol_filter(df, savgol_window_length, savgol_polyorder)
         df = pd.DataFrame(df, index=index)
-    ax.plot(df.values.flatten(), label=label if label else '', c=color, alpha=alpha, linewidth=linewidth)
-    xtick_labels = ([str(int(-df.shape[1] / 2))]
-                    + list(itertools.chain(*[[i[0], i[1]] for i in itertools.zip_longest(df.index.to_list(), [
-                plus_minus + str(int(df.shape[1] / 2))] * df.shape[0])]))
-                    )
-    xtick_labels[-1] = str(int(+df.shape[1] / 2))
-    ax.set_xticks([int(i) for i in range(0, df.shape[0] * df.shape[1] + 1, int(df.shape[1] / 2))],
-                  labels=xtick_labels
-                  )
-    colors = seaborn.color_palette(n_colors=df.shape[0])
 
-    for count, i in enumerate(
-            [i for i in range(df.shape[1] // 2, df.shape[0] * df.shape[1], df.shape[1])]):
+    ax.plot(
+        df.values.flatten(),
+        label=label if label else '',
+        c=color,
+        alpha=alpha,
+        linewidth=linewidth
+    )
+
+    index_list = df.index.to_list()
+    left_xtick = [str(int((-bps - 1) / 2))]
+    middle_xtick = [plus_minus + str(int((bps + 1) / 2))]
+    right_xtick = list(itertools.chain(
+        *[[i[0], i[1]] for i in itertools.zip_longest(index_list, middle_xtick * n_intervals)]
+    ))
+    right_xtick[-1] = "+" + str(int((+bps + 1) / 2))
+    xtick_labels = (left_xtick + right_xtick)
+    xticks = [int(i) for i in range(0, n_intervals * bps + 1, int(bps / 2))]
+
+    ax.set_xticks(xticks, labels=xtick_labels)
+    colors = seaborn.color_palette(n_colors=n_intervals)
+
+    for count, i in enumerate([i for i in range(bps // 2, n_intervals * bps, bps)]):
         ax.axvline(i, ls="-.", color=colors[count], alpha=0.5, linewidth=linewidth)
-    for count, i in enumerate([i for i in range(0, df.shape[0] * df.shape[1] + 1, df.shape[1])]):
+
+    for count, i in enumerate([i for i in range(0, n_intervals * bps + 1, bps)]):
         ax.axvline(i, ls=":", color="gray", alpha=0.5)
+
     ax.spines[['right', 'top', 'bottom']].set_visible(False)
     ax.annotate('', xy=(0, -0.1), xycoords='axes fraction', xytext=(1, -0.1))
 
     return fig, ax
 
 
-def plot_heatmap_signal_batch(fig=None, ax=None, array=None,
+def plot_heatmap_signal_batch(fig=None, ax=None,
+                              array=None,
                               title=None,
                               title_font_size=20,
                               general_font_size=15) -> tuple[Figure, Axes]:
@@ -233,12 +279,12 @@ def plot_heatmap_kde_amplitude(array=None,
                                bottom=5,
                                ) -> tuple[Figure, Axes]:
     """
-    Plots various analyses of the given array, including a PCA plot, signal plot, signal per position plot, 
+    Plots various analyses of the given array, including a PCA plot, signal plot, signal per position plot,
     and correlation plot.
 
     :param array: The 2D array to plot and analyze.
     :param fig: The figure object to use for plotting. If not provided, a new figure will be created.
-    :param ax: The axes objects to use for plotting. If not provided, new axes will be created.
+    :param ax: The axes object to use for plotting. If not provided, new axes will be created.
     :param title: The title for the plots. If not provided, no title will be set.
     :param title_font_size: The font size for the title. Default is 20.
     :param general_font_size: The font size for the axis labels. Default is 15.
@@ -246,7 +292,8 @@ def plot_heatmap_kde_amplitude(array=None,
     :param ylabel: The label for the y-axis of the correlation plot.
     :param flanking: The number of flanking base pairs to consider in the analysis. Default is 1500.
     :param annotation_center_line: The center line annotation for the heatmap. Default is "center".
-    :param window_center: The number of base pairs to consider around the center for amplitude calculation. Default is 50.
+    :param window_center: The number of base pairs to consider around the center for amplitude calculation.
+                          Default is 50.
     :param top: The number of top rows to consider for analysis. Default is 5.
     :param bottom: The number of bottom rows to consider for analysis. Default is 5.
     :return: A tuple containing the figure and axes objects (fig, ax).
@@ -262,20 +309,33 @@ def plot_heatmap_kde_amplitude(array=None,
     trf_array = pd.DataFrame(pca.fit_transform(array))
     trf_array.columns = ["PC1", "PC2"]
 
-    if flanking * 2 > array.shape[1]:
-        logger.error(f"flanking is too large, it should be less than {array.shape[1] // 2}")
-        flanking = (array.shape[1] // 5) * 2
+    bps = array.shape[1]
+    n_intervals = array.shape[0]
+    n = 10
 
-    if window_center * 2 > array.shape[1]:
-        logger.error(f"window_center is too large, it should be less than {array.shape[1] // 2}")
+    if (top + bottom > n >= n_intervals) or (n >= top + bottom >= n_intervals):
+        top, bottom = n_intervals // 2, n_intervals // 2
 
-    mask = np.logical_or(np.arange(array.shape[1]) <= flanking,
-                         np.arange(array.shape[1]) > array.shape[1] - flanking)
-    center = array.shape[1] // 2
+    if (top + bottom > n_intervals > n) or (n_intervals > top + bottom > n):
+        top, bottom = n // 2, n // 2
+
+    two_fifths = (bps // 5) * 2
+
+    if flanking > two_fifths:
+        logger.warning(f"flanking is too large, {two_fifths} will be used instead")
+        flanking = two_fifths
+
+    if window_center > two_fifths / 4:
+        logger.warning(f"window_center is too large, {two_fifths / 4} will be used instead")
+        window_center = two_fifths / 4
+
+    mask = np.logical_or(np.arange(bps) <= flanking,
+                         np.arange(bps) > bps - flanking)
+    center = bps // 2
 
     trf_array["amplitude"] = (
-            array.iloc[:, center - window_center: center + window_center].mean(axis=1) / array.iloc[:, mask].mean(
-        axis=1)
+            array.iloc[:, center - window_center: center + window_center]
+            .mean(axis=1) / array.iloc[:, mask].mean(axis=1)
     ).values
     trf_array.index = array.index
     if trf_array.shape[0] > 2:
@@ -286,22 +346,20 @@ def plot_heatmap_kde_amplitude(array=None,
     ax[0, 1].set_title("PCA plot", fontsize=general_font_size)
 
     array["amplitude"] = trf_array.amplitude.copy()
-    row_slice = slice(None, None, None)
-    if array.shape[0] > 20:
+    indices_intervals = np.arange(n_intervals)
 
-        if top + bottom > array.shape[0]:
-            logger.error(f"top + bottom is too large, it should be less than {array.shape[0]}")
-            top = 10
-
-        row_slice = np.logical_or(np.arange(array.shape[0]) > (array.shape[0] - top),
-                                  np.arange(array.shape[0]) <= bottom)
-    df = array.sort_values(by="amplitude", ascending=False)[row_slice].copy()
-    tf_to_annotate = tf_to_annotate if tf_to_annotate is not None else df.index.to_list()
-    marker_size = 20 if array.shape[0] < 20 else 10 if array.shape[0] < 50 else 5
+    mask_rows = np.logical_or(
+        indices_intervals < bottom,
+        indices_intervals >= n_intervals - top
+    )
+    df = array.sort_values(by="amplitude", ascending=False)[mask_rows].copy()
+    tf_to_annotate = tf_to_annotate if tf_to_annotate is not None else trf_array.index.to_list()
+    marker_size = 20 if n_intervals < 20 else 10 if n_intervals < 50 else 5
     for tf in tf_to_annotate:
         if tf in trf_array.index:
             x, y, _ = trf_array.loc[tf].to_list()
-            ax[0, 1].plot(x, y, marker="o", markersize=marker_size // 2, markeredgecolor="red", markerfacecolor="red")
+            ax[0, 1].plot(x, y, marker="o", markersize=marker_size // 2,
+                          markeredgecolor="red", markerfacecolor="red")
             ax[0, 1].annotate(tf, xy=(x, y))
 
     for (point, amplitude) in zip(np.arange(df.shape[0]), df.amplitude.to_list()):
@@ -322,22 +380,23 @@ def plot_heatmap_kde_amplitude(array=None,
 
     fig, _ = create_masked_corr_matrix_plot(df, fig=fig, ax=ax[1, 1], title=None, title_font_size=title_font_size,
                                             general_font_size=general_font_size,
-                                            axlabel=ylabel)
+                                            axlabel=ylabel,
+                                            )
     ax[1, 1].collections[0].colorbar.set_label('Correlation scale', fontsize=general_font_size)
     ax[1, 1].set_title("Correlation plot", fontsize=general_font_size)
-    for i in range(2):
-        for l in range(2):
-            if i == 0 and l == 0:
-                ax[i, l].spines[['right', 'top']].set_visible(False)
+    for row in range(2):
+        for col in range(2):
+            if row == 0 and col == 0:
+                ax[row, col].spines[['right', 'top']].set_visible(False)
 
-            if i == 0 and l == 1:
-                ax[i, l].spines[['right', 'top']].set_visible(False)
+            if row == 0 and col == 1:
+                ax[row, col].spines[['right', 'top']].set_visible(False)
     fig.tight_layout()
 
     return fig, ax
 
 
-def correlation_map_plot(df) -> Figure:
+def correlation_map_plot(df: pd.DataFrame) -> Figure:
     """
     This function creates a plot of the correlation matrix between the provided signals.
 
@@ -362,8 +421,14 @@ def correlation_map_plot(df) -> Figure:
     return fig
 
 
-def create_masked_corr_matrix_plot(df, fig=None, ax=None, title=None, title_font_size=20, general_font_size=15,
-                                   axlabel=None, label_color_bar="") -> tuple[Figure, Axes]:
+def create_masked_corr_matrix_plot(df: pd.DataFrame,
+                                   fig: Figure = None,
+                                   ax: Axes = None,
+                                   title: str = None,
+                                   title_font_size: int = 20,
+                                   general_font_size: int = 15,
+                                   axlabel: str = None,
+                                   label_color_bar: str = "") -> tuple[Figure, Axes]:
     """
     Creates a masked correlation matrix plot.
 
@@ -378,7 +443,7 @@ def create_masked_corr_matrix_plot(df, fig=None, ax=None, title=None, title_font
 
     :return: A tuple containing the figure and axes objects (fig, ax).
     """
-    
+
     df = df.T.copy().corr()
     if not ax or not fig:
         fig, ax = plt.subplots(1, 1, figsize=(20, 10))
@@ -403,11 +468,18 @@ def create_masked_corr_matrix_plot(df, fig=None, ax=None, title=None, title_font
     return fig, ax
 
 
-def create_heatmap_bed_per_position(df, fig=None, ax=None, title="", ylabel=None, general_font_size=15,
-                                    title_font_size=20, annotation_center_line: str = None,
-                                    label_color_bar="") -> tuple[Figure, Axes]:
+def create_heatmap_bed_per_position(df,
+                                    fig: Figure = None,
+                                    ax: Axes = None,
+                                    title: str = "",
+                                    ylabel: str = None,
+                                    general_font_size: int = 15,
+                                    title_font_size: int = 20,
+                                    annotation_center_line: str = None,
+                                    label_color_bar: str = "") -> tuple[Figure, Axes]:
     """
-    Creates a heatmap of the given DataFrame containing the signals for each BED file with optional annotations and customizations.
+    Creates a heatmap of the given DataFrame containing the signals for each BED file with optional annotations and
+    customizations.
 
     :param df: The DataFrame to plot as a heatmap.
     :param fig: The figure object to use for plotting. If not provided, a new figure will be created.
@@ -421,7 +493,7 @@ def create_heatmap_bed_per_position(df, fig=None, ax=None, title="", ylabel=None
 
     :return: A tuple containing the figure and axes objects (fig, ax).
     """
-    
+
     if not ax or not fig:
         fig, ax = plt.subplots(2, 2, figsize=(20, 10))
 
@@ -446,10 +518,10 @@ def create_heatmap_bed_per_position(df, fig=None, ax=None, title="", ylabel=None
     return fig, ax
 
 
-def plot_fragment_length_distribution(array: np.array, 
-                                      start_pos: int, 
+def plot_fragment_length_distribution(array: np.array,
+                                      start_pos: int,
                                       end_pos: int,
-                                      title="FLD per position") -> Figure:
+                                      title: str = "FLD per position") -> Figure:
     """
     Plots the fragment length distribution per position.
 

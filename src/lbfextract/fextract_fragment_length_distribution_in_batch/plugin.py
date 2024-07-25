@@ -318,7 +318,7 @@ class FextractHooks:
             sample_name = extra_config.ctx["path_to_bam"].stem
             fig.suptitle(f"{sample_name} {signal_type} {i}".capitalize(), fontsize=25)
             output_path = extra_config.ctx["output_path"] / file_name_sanitized
-            fig.savefig(output_path, dpi=300)
+            fig.savefig(output_path, dpi=600)
             fig_pths[i] = output_path
             plt.close(fig)
 
@@ -446,7 +446,7 @@ class CliHook:
                 distribution = calculate_reference_distribution(path_to_sample=path_to_bam,
                                                                 min_length=min_fragment_length,
                                                                 max_length=max_fragment_length,
-                                                                chr="chr12",
+                                                                chr_name="chr12",
                                                                 start=34_300_000,
                                                                 end=34_500_000
                                                                 )

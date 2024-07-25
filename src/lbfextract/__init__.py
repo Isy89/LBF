@@ -48,6 +48,7 @@ import logging.config
 import os
 import pathlib
 import tempfile
+import warnings
 
 import pluggy
 import rich_click as click
@@ -77,10 +78,19 @@ root_logger.setLevel(logging.INFO)
 if PROFILER_DEBUG:
     root_logger.setLevel(logging.DEBUG)
 
-# attaching the filter to all handlers to filter out messages not coming from lbfextract
+
+def custom_warning_handler(message, category, filename, lineno, file=None, line=None):
+    log_message = warnings.formatwarning(message, category, filename, lineno, line)
+    logger.debug(log_message)
+
+
+warnings.showwarning = custom_warning_handler
+
 external_module_filter = ExternalModuleFilter()
+
 for handler in root_logger.handlers:
     handler.addFilter(external_module_filter)
+
 logger = logging.getLogger(__name__)
 
 hookimpl = pluggy.HookimplMarker("lbfextract")
@@ -89,6 +99,7 @@ hookimpl_cli = pluggy.HookimplMarker("lbfextract_cli")
 
 def check_conda_env_was_installed():
     env_samtools = None
+    exists = False
     if check_in_conda_env():
         env_samtools = (
                 pathlib.Path(os.environ.get("CONDA_EXE")).parent.parent /

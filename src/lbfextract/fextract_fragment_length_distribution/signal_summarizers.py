@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pysam
 
-from lbfextract.fextract.signal_transformer import adapt_indices
+from lbfextract.utils import adapt_indices
 
 
 class TfbsFragmentLengthDistribution:

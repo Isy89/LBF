@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import pathlib
 from typing import Any, Optional
 
@@ -7,26 +8,25 @@ import click
 import matplotlib
 import numpy as np
 import pandas as pd
-import logging
 import pysam
-import scipy
+from scipy.signal import find_peaks
 from scipy.signal import savgol_filter
 
 import lbfextract.fextract.signal_transformer
 import lbfextract.fextract_fragment_length_distribution.signal_summarizers
 from lbfextract.core import App
 from lbfextract.fextract.schemas import AppExtraConfig, ReadFetcherConfig, Config
-from lbfextract.utils import generate_time_stamp, sanitize_file_name
-from lbfextract.utils_classes import Signal
 from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
 from lbfextract.plotting_lib.plotting_functions import plot_fragment_length_distribution
+from lbfextract.utils import generate_time_stamp, sanitize_file_name
+from lbfextract.utils_classes import Signal
 
 logger = logging.getLogger(__name__)
 
 
-def calculate_reference_distribution(path_to_sample, min_length, max_length, chr, start, end):
+def calculate_reference_distribution(path_to_sample, min_length, max_length, chr_name, start, end):
     alignment_file = pysam.AlignmentFile(path_to_sample, "rb")
-    reads = alignment_file.fetch(chr, start, end)
+    reads = alignment_file.fetch(chr_name, start, end)
     array_fragment_lengths = np.zeros(max_length - min_length)
     for i in reads:
         if i.tlen < min_length or i.tlen >= max_length:
@@ -38,7 +38,7 @@ def calculate_reference_distribution(path_to_sample, min_length, max_length, chr
 
 def get_peaks(distribution, height=0.0001, distance=100):
     distribution = savgol_filter(distribution, 10, 3)
-    peaks = scipy.signal.find_peaks(distribution, height=height, distance=distance)[0]
+    peaks = find_peaks(distribution, height=height, distance=distance)[0]
     return peaks
 
 
@@ -188,7 +188,7 @@ class FextractHooks:
         file_name_sanitized = sanitize_file_name(file_name)
 
         output_path = extra_config.ctx["output_path"] / file_name_sanitized
-        fig.savefig(output_path, dpi=300)
+        fig.savefig(output_path, dpi=600)
 
         return fig
 
@@ -370,7 +370,7 @@ class CliHook:
                 distribution = calculate_reference_distribution(path_to_sample=path_to_bam,
                                                                 min_length=min_fragment_length,
                                                                 max_length=max_fragment_length,
-                                                                chr="chr12",
+                                                                chr_name="chr12",
                                                                 start=34_300_000,
                                                                 end=34_500_000
                                                                 )

@@ -4,10 +4,9 @@ from typing import Any, Optional
 from typing import List
 
 import click
-import matplotlib
 import numpy as np
-import scipy.stats
 from matplotlib import pyplot as plt
+from scipy.stats import entropy
 
 import lbfextract.fextract
 from lbfextract.core import App
@@ -39,7 +38,7 @@ class FextractHooks:
         sum_right = single_intervals_transformed_reads.array[:, -flanking_window:].sum(axis=1)
         flanking_array = (sum_left + sum_right) / (flanking_window * 2)
         flanking_distribution = flanking_array / flanking_array.sum()
-        relative_entropy_to_flanking = np.apply_along_axis(lambda x: scipy.stats.entropy(x, flanking_distribution),
+        relative_entropy_to_flanking = np.apply_along_axis(lambda x: entropy(x, flanking_distribution),
                                                            0,
                                                            single_intervals_transformed_reads.array)
         return Signal(array=relative_entropy_to_flanking, tags=("relative_entropy_to_flanking",), metadata=None)
@@ -47,7 +46,7 @@ class FextractHooks:
     @lbfextract.hookimpl
     def plot_signal(self, signal: Signal,
                     config: Any,
-                    extra_config: AppExtraConfig) -> matplotlib.figure.Figure:
+                    extra_config: AppExtraConfig) -> plt.Figure:
         signal_type = "_".join(signal.tags) if signal.tags else ""
         with plt.style.context('seaborn-v0_8-whitegrid'):
             fig, ax = plt.subplots(1, figsize=(10, 10))
@@ -57,11 +56,11 @@ class FextractHooks:
             fig, _ = plot_signal(signal.array, apply_savgol=False, ax=ax, fig=fig, label=signal_type)
             ax.set_ylabel(signal_type)
             ax.set_xlabel("Position")
-        file_name = f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.pdf"
+        file_name = f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.png"
         file_name_sanitized = sanitize_file_name(file_name)
         fig.savefig(
             extra_config.ctx["output_path"] / file_name_sanitized,
-            dpi=300)
+            dpi=600)
         return fig
 
 
@@ -218,7 +217,7 @@ class CliHook:
                 distribution = calculate_reference_distribution(path_to_sample=path_to_bam,
                                                                 min_length=min_fragment_length,
                                                                 max_length=max_fragment_length,
-                                                                chr="chr12",
+                                                                chr_name="chr12",
                                                                 start=34_300_000,
                                                                 end=34_500_000
                                                                 )

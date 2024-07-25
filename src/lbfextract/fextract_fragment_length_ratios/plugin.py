@@ -5,16 +5,16 @@ from typing import Any, Optional
 from typing import List
 
 import click
-import matplotlib
+import numpy as np
 from matplotlib import pyplot as plt
 
 import lbfextract.fextract
 from lbfextract.core import App
 from lbfextract.fextract.schemas import Config, AppExtraConfig, ReadFetcherConfig
-from lbfextract.utils import generate_time_stamp, sanitize_file_name
-from lbfextract.utils_classes import Signal
 from lbfextract.fextract_fragment_length_distribution.schemas import SingleSignalTransformerConfig
 from lbfextract.plotting_lib.plotting_functions import plot_signal
+from lbfextract.utils import generate_time_stamp, sanitize_file_name
+from lbfextract.utils_classes import Signal
 
 
 class FextractHooks:
@@ -28,7 +28,9 @@ class FextractHooks:
         :param extra_config: extra configuration that may be used in the hook implementation
         """
         single_intervals_transformed_reads.array += 1e-10
-        single_intervals_transformed_reads.array /= single_intervals_transformed_reads.array.sum(axis=0)
+        sums = np.nansum(single_intervals_transformed_reads.array, axis=0)
+        mask = sums > 0
+        single_intervals_transformed_reads.array[:, mask] /= sums[mask]
         nominator_upper_bound = config.nominator_upper_bound - config.min_fragment_length
 
         nominator_lower_bound = config.nominator_lower_bound - config.min_fragment_length
@@ -37,12 +39,16 @@ class FextractHooks:
         denominator_lower_bound = config.denominator_lower_bound - config.min_fragment_length
         denominator = single_intervals_transformed_reads.array[denominator_lower_bound:denominator_upper_bound].sum(
             axis=0)
-        return Signal(array=nominator / denominator, tags=("fl_ratios",), metadata=None)
+        mask = denominator > 0
+        res = np.zeros_like(denominator)
+        res[mask] = nominator[mask] / denominator[mask]
+        res[~mask] = np.nan
+        return Signal(array=res, tags=("fl_ratios",), metadata=None)
 
     @lbfextract.hookimpl
     def plot_signal(self, signal: Signal,
                     config: Any,
-                    extra_config: AppExtraConfig) -> matplotlib.figure.Figure:
+                    extra_config: AppExtraConfig) -> plt.Figure:
         signal_type = "_".join(signal.tags) if signal.tags else ""
         with plt.style.context('seaborn-v0_8-whitegrid'):
             fig, ax = plt.subplots(1, figsize=(10, 10))
@@ -55,9 +61,7 @@ class FextractHooks:
 
         file_name = f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.pdf"
         file_name_sanitized = sanitize_file_name(file_name)
-        fig.savefig(
-            extra_config.ctx["output_path"] / file_name_sanitized,
-            dpi=300)
+        fig.savefig( extra_config.ctx["output_path"] / file_name_sanitized, dpi=600)
         return fig
 
 

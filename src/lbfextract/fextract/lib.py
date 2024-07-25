@@ -8,12 +8,10 @@ import tempfile
 from typing import Any
 
 import dill as pickle
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pyranges
-import pyranges as pr
 import pysam
 
 import lbfextract.fextract
@@ -35,8 +33,7 @@ class FextractHooks:
                     path_to_bed: pathlib.Path,
                     config: ReadFetcherConfig,
                     extra_config: AppExtraConfig) -> pd.DataFrame:
-        # create a temporary file adding the flanking regions and the extra bases required to be sure the reads
-        # to be fetched which partially overlapping with the regions will be included
+
         if not path_to_bam.exists():
             raise ValueError(f"The bam file ({path_to_bam}) does not exist")
         if not path_to_bed.exists():
@@ -48,18 +45,22 @@ class FextractHooks:
 
         config_f = config.f or 2
         config_F = config.F or 3868
-        temporary_bed_file_name, bed_file = load_temporary_bed_file(bed_file=path_to_bed,
-                                                                    extra_bases=config.extra_bases,
-                                                                    window=config.window,
-                                                                    flanking_region_window=config.flanking_region_window,
-                                                                    n_binding_sites=config.n_binding_sites,
-                                                                    run_id=extra_config.ctx["run_id"])
+        temporary_bed_file_name, bed_file = load_temporary_bed_file(
+            bed_file=path_to_bed,
+            extra_bases=config.extra_bases,
+            window=config.window,
+            flanking_region_window=config.flanking_region_window,
+            n_binding_sites=config.n_binding_sites,
+            run_id=extra_config.ctx["run_id"]
+        )
         if config.window == 0:
             starts_equal_ends: pd.Series = bed_file.as_df()["Start"] == bed_file.as_df()["End"]
             if any(starts_equal_ends):
-                raise ValueError("The bed file contains intervals with the same start and end but window is set to 0."
-                                 "Please either provide interval of size grater than 0 or set the window size to a value"
-                                 "greater than 0")
+                raise ValueError(
+                    "The bed file contains intervals with the same start and end but window is set to 0."
+                    "Please either provide interval of size grater than 0 or set the window size to a value"
+                    "greater than 0"
+                )
         # filtering the bam file to avoid having to go through it each time while fatching
         if bed_file.empty:
             raise ValueError("The bed file is empty")
@@ -210,10 +211,10 @@ class FextractHooks:
         default_flanking_region = single_intervals_transformed_reads.array.shape[1] // 3
         flanking_window = extra_config.ctx["read_fetcher_config"].flanking_region_window or default_flanking_region
         summary_method = {
-            "mean": np.mean,
-            "median": np.median,
-            "max": np.max,
-            "min": np.min,
+            "mean": np.nanmean,
+            "median": np.nanmedian,
+            "max": np.nanmax,
+            "min": np.nanmin,
             "skip": lambda x, axis: x
         }
         indices = np.arange(single_intervals_transformed_reads.array.shape[1])
@@ -243,7 +244,7 @@ class FextractHooks:
         time_stamp = generate_time_stamp()
         run_id = extra_config.ctx["id"]
         signal_type = "_".join(signal.tags)
-        
+
         file_name = f"{time_stamp}__{run_id}__{signal_type}__signal.pkl"
         file_name_sanitized = sanitize_file_name(file_name)
 
@@ -255,19 +256,27 @@ class FextractHooks:
     @lbfextract.hookimpl
     def plot_signal(self, signal: Signal,
                     config: Any,
-                    extra_config: AppExtraConfig) -> matplotlib.figure.Figure:
+                    extra_config: AppExtraConfig) -> plt.Figure:
+        big_fs = 20
+        medium_fs = 15
+
         signal_type = "_".join(signal.tags) if signal.tags else ""
         with plt.style.context('seaborn-v0_8-whitegrid'):
             fig, ax = plt.subplots(1, figsize=(10, 10))
-            ax.set_title(f"{signal_type}\n"
-                         f"patient: {extra_config.ctx['path_to_bam'].stem} "
-                         f"bed file: {extra_config.ctx['path_to_bed'].stem.split('.', 1)[0]}", fontsize=20)
+            title = (
+                f"SIGNAL TYPE: {signal_type}\n"
+                f"ID: {extra_config.ctx['path_to_bam'].stem} \n"
+                f"BED file: {extra_config.ctx['path_to_bed'].stem.split('.', 1)[0]}"
+            )
+            ax.set_title(title, fontsize=big_fs)
             fig, _ = plot_signal(signal.array, apply_savgol=False, ax=ax, fig=fig, label=signal_type)
-            ax.set_ylabel(signal_type)
-            ax.set_xlabel("Position")
+            ax.set_ylabel(signal_type, fontsize=medium_fs)
+            ax.set_xlabel("Position", fontsize=medium_fs)
+            ax.set_xticklabels(ax.get_xticklabels(), fontsize=medium_fs)
+            ax.set_yticklabels(ax.get_yticklabels(), fontsize=medium_fs)
 
         file_name = f"{generate_time_stamp()}__{extra_config.ctx['id']}__{signal_type}_signal_plot.png"
         file_name_sanitized = sanitize_file_name(file_name)
         output_path = extra_config.ctx["output_path"] / file_name_sanitized
-        fig.savefig(output_path, dpi=300)
+        fig.savefig(output_path, dpi=600)
         return fig
