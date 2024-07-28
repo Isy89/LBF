@@ -6,29 +6,26 @@ import pathlib
 from itertools import combinations
 from time import sleep
 
-import click
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import polars as pl
-import scipy.stats
+import rich_click as click
 import seaborn
 import statsmodels
 import statsmodels.stats.multitest
 import statsmodels.stats.weightstats
 import stringdb
-from PyComplexHeatmap import ClusterMapPlotter, HeatmapAnnotation, anno_simple, anno_scatterplot
 from scikit_posthocs import posthoc_dunn
-from scipy.stats import kruskal
+from scipy.stats import kruskal, mannwhitneyu
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
 
 import lbfextract.fextract
+from lbfextract.plotting_lib.plotting_functions import plot_heatmap_diff_active_gi
 from lbfextract.transcription_factor_analysis.loaders import ResultsLoader
 from lbfextract.transcription_factor_analysis.utils import remove_outliers, generate_time_stamp
 
 logger = logging.getLogger(__name__)
-matplotlib.use('Agg')
 
 
 def get_state(mean_1, mean_2):
@@ -53,8 +50,16 @@ class DiffSignalAnalysis:
                  max_iter: int,
                  alpha: float,
                  overwrite: bool,
-                 remove_outliers: bool,
-                 save_indivitual_plots: bool, ):
+                 rm_outliers: bool,
+                 save_individual_plots: bool,
+                 use_provided_gi: bool = False,
+                 user_background: list[str] = None,
+                 normalize: bool = False
+                 ):
+        self.normalize = normalize
+        self.non_interpretable_fc = None
+        self.user_background = user_background
+        self.use_provided_gi = use_provided_gi
         self.df = pl.from_pandas(df) if isinstance(df, pd.DataFrame) else df
         self.outer_group_column = outer_group_column
         self.inner_group_column = inner_group_column
@@ -68,8 +73,8 @@ class DiffSignalAnalysis:
         self.overwrite = overwrite
         self.time_stamp = generate_time_stamp()
         self.enrichment_results: dict[str, pd.DataFrame] | None = None
-        self.remove_outliers = remove_outliers
-        self.save_indivitual_plots = save_indivitual_plots
+        self.remove_outliers = rm_outliers
+        self.save_individual_plots = save_individual_plots
         self.data_for_plot = None
 
         if not self.output_path.exists():
@@ -77,7 +82,7 @@ class DiffSignalAnalysis:
                 f"output path: {self.output_path} does not exists. creating it with all missing parent folders.")
             self.output_path.mkdir(exist_ok=True, parents=True)
 
-        self.run_id = self._get_run_id()
+        self.run_id = self.__get_run_id()
 
         if self.output_path.joinpath(self.get_output_folder()).exists():
             logger.info(f"run id: {self.run_id} already exists.")
@@ -89,7 +94,176 @@ class DiffSignalAnalysis:
         else:
             self.output_path.joinpath(self.get_output_folder()).mkdir(exist_ok=True, parents=True)
 
-    def _get_run_id(self):
+    @staticmethod
+    def get_enrichment(genes: list[str], background: list[str] = None) -> pd.DataFrame | None:
+
+        try:
+            string_ids = stringdb.get_string_ids(genes).queryItem.to_list()
+            background_ids = stringdb.get_string_ids(
+                background).queryItem.to_list() if background is not None else None
+            sleep(1)
+            return stringdb.get_enrichment(string_ids,
+                                           background_string_identifiers=background_ids
+                                           )[["category", "preferredNames", "p_value", "fdr", "description"]]
+        except ValueError as e:
+            logger.warning("There was an error with the string database server. "
+                           "Enrichment analysis could not be retrieved. the error was:\n"
+                           f"{e}")
+        except KeyError:
+            logger.warning("Get enrichment failed due to a databse problem")
+            return None
+
+    def get_output_folder(self):
+        return f"{self.time_stamp}__{self.run_id}"
+
+    def run(self):
+        logger.info("Preprocessing the data ... ")
+        self.__preprocess_df()
+        logger.info("Extracting the differentially active TF ... ")
+
+        df = self.__get_diff_active_gi()
+        logger.info("Retrieving the enrichment analysis ... ")
+        self.__get_enrichment_result_per_group_pair(df)
+        return self
+
+    def save_results(self):
+        output_path = self.output_path / self.get_output_folder()
+        output_path.mkdir(exist_ok=True, parents=True)
+
+        rejected_tfs = self.results.query("Rejected == True").genomic_interval.unique()
+
+        df_heatmap = (
+            self.__extract_column_for_plot(self.df.loc[self.df[self.inner_group_column].isin(rejected_tfs)])
+            .pivot_table(index="sample_name",
+                         columns=self.inner_group_column,
+                         values=self.value_column,
+                         fill_value=0)
+        )
+
+        def get_outliers_mask(column, bound="lower"):
+            Q1 = column.quantile(0.25)
+            Q3 = column.quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            if bound == "lower":
+                return column < lower_bound
+            else:
+                return column > upper_bound
+
+        def replace_outliers(x_):
+            x = x_.copy()
+            mask_lower = get_outliers_mask(x, bound="lower")
+            mask_upper = get_outliers_mask(x, bound="upper")
+            x[mask_lower] = x[~mask_lower].min()
+            x[mask_upper] = x[~mask_upper].max()
+
+            return x
+
+        any_rejected = True if rejected_tfs.shape[0] > 0 else False
+
+        clusters = {"groups": self.df.groupby("sample_name")[self.outer_group_column].first()}
+        filter_rows = self.results[self.inner_group_column].isin(rejected_tfs)
+        adjusted_pvals = (
+            self.results.loc[filter_rows]
+            .pivot_table(index="group_pairs",
+                         columns=self.inner_group_column,
+                         values="adj_p-val",
+                         fill_value=np.nan).T
+        )
+        mean_1 = self.results.mean_group_1.values
+        mean_2 = self.results.mean_group_2.values
+
+        fc = mean_1 / mean_2
+        log2_fc = np.log2(np.abs(fc))
+        self.non_interpretable_fc = fc < 0
+        states = get_state(mean_1, mean_2)
+        self.results.loc[:, "log2_fc"] = log2_fc
+        self.results.loc[:, "signed_log2"] = signed_log2(fc)
+        self.results.loc[:, "state"] = states
+        self.results.loc[:, "change"] = mean_1 - mean_2
+
+        log2_fc_vals = (
+            self.results
+            .assign(log2_fc=log2_fc)
+            .pivot_table(index="group_pairs",
+                         columns=self.inner_group_column,
+                         values="log2_fc",
+                         fill_value=np.nan)
+        ).T
+
+        if not df_heatmap.empty:
+            df_heatmap = pd.DataFrame(
+                data=MinMaxScaler().fit_transform(df_heatmap.apply(lambda x: replace_outliers(x), axis=0)),
+                columns=df_heatmap.columns,
+                index=df_heatmap.index
+            )
+
+            figsize_height = 10 + (df_heatmap.shape[1] // 20) + (clusters["groups"].unique().shape[0] * 2)
+            figsize_width = 10 + ((df_heatmap.shape[1] // 20) * 3)
+            fig, data_for_plot = plot_heatmap_diff_active_gi(
+                df_heatmap,
+                clusters=clusters,
+                split_key="groups",
+                adjusted_pval=adjusted_pvals,
+                log2_fc=log2_fc_vals.loc[rejected_tfs, :],
+                output_path=output_path,
+                filename="fextract_diff_signals_heatmap.png",
+                save=True,
+                figsize=(
+                    figsize_width,
+                    figsize_height,
+                ),
+                cmap="RdYlBu_r"
+            )
+            self.data_for_plot = data_for_plot
+        fig = self.plot_barplot_rejected_per_group()
+        if fig:
+            fig.savefig(output_path / "fextract_diff_signals_per_group_bar_plot.png")
+            plt.close(fig)
+        self.__save_results_per_group_pair(any_rejected=any_rejected)
+
+        return self
+
+    def __preprocess_df(self):
+        df = self.df.to_pandas()
+        df = df[~df[self.outer_group_column].isin(["NA", "NaN", "None"])]
+        df = df[~df[self.outer_group_column].isna()]
+        self.df = df
+
+    def __get_diff_active_gi(self):
+
+        df_for_statistical_tests = self.__extract_column_for_plot(self.df)
+        if self.normalize:
+            df_for_statistical_tests = self.__normalize_between_samples(df_for_statistical_tests)
+        genomic_intervals_groups = df_for_statistical_tests.groupby(self.inner_group_column)
+        group_names = self.df[self.outer_group_column].unique()
+        groups_names_combinations = sorted(combinations(group_names, 2))
+        n_groups = len(group_names)
+
+        if n_groups == 2:
+            df = self.__get_diff_active_gi_two_groups(genomic_intervals_groups, groups_names_combinations)
+            self.results = self.__get_global_correction_two_groups(df)
+        elif n_groups > 2:
+            df = self.__get_diff_active_gi_multiple_groups(genomic_intervals_groups, groups_names_combinations)
+            self.results = self.__get_global_correction_multiple_groups(df)
+        else:
+            raise ValueError(f"Number of groups should be 2 or more found {len(group_names)}")
+        return df
+
+    def __get_enrichment_result_per_group_pair(self, df: pd.DataFrame):
+        diff_active_region_per_group_pair = self.results.query("Rejected == True").groupby("group_pairs")
+        background = self.__get_background(df)
+        self.enrichment_results = {
+            f"{group_pair}": self.get_enrichment(
+                diff_active_region_per_group_pair.get_group(group_pair)[self.inner_group_column]
+                .to_list(),
+                background=background
+            )
+            for group_pair in diff_active_region_per_group_pair.groups
+        }
+
+    def __get_run_id(self):
         dict_for_hash = {
             "df": self.df,
             "outer_group_column": self.outer_group_column,
@@ -106,162 +280,52 @@ class DiffSignalAnalysis:
         h.update(json.dumps(dict_for_hash, sort_keys=True, default=str).encode())
         return h.hexdigest()
 
-    def plot_heatmap(self,
-                     data,
-                     clusters: dict,
-                     split_key,
-                     save: bool,
-                     adjusted_pval: dict[pd.Series],
-                     log2_fc: dict[pd.Series],
-                     figsize=(10, 10),
-                     filename: str = "heatmap_diff_active_signals.pdf",
-                     output_path: pathlib.Path = None,
-                     col_cluster=True,
-                     row_cluster=True,
-                     col_split_gap=0.8,
-                     row_split_gap=0.8,
-                     label='values',
-                     row_dendrogram=True,
-                     show_rownames=True,
-                     show_colnames=True,
-                     subplot_gap=5,
-                     legend_vpad=15,
-                     tree_kws=None,
-                     verbose=0,
-                     legend_gap=5,
-                     legend_hpad=5,
-                     cmap='RdYlBu_r',
-                     xticklabels_kws={'labelrotation': -90, 'labelcolor': 'black'},
-                     **kwargs
-                     ):
-        tree_kws = {'row_cmap': 'Set1'} if tree_kws is None else tree_kws
-        self.data_for_plot = dict(
-            data=data,
-            clusters=clusters,
-            split_key=split_key,
-            save=save,
-            adjusted_pval=adjusted_pval,
-            log2_fc=log2_fc,
-            figsize=figsize,
-            filename=filename,
-            output_path=output_path,
-            col_cluster=col_cluster,
-            row_cluster=row_cluster,
-            col_split_gap=col_split_gap,
-            row_split_gap=row_split_gap,
-            label=label,
-            row_dendrogram=row_dendrogram,
-            show_rownames=show_rownames,
-            show_colnames=show_colnames,
-            subplot_gap=subplot_gap,
-            legend_vpad=legend_vpad,
-            tree_kws=tree_kws,
-            verbose=verbose,
-            legend_gap=legend_gap,
-            legend_hpad=legend_hpad,
-            cmap=cmap,
-            xticklabels_kws=xticklabels_kws,
-            **kwargs
-
-        )
-
-        output_path = output_path if output_path else pathlib.Path.cwd()
-
-        fig = plt.figure(figsize=figsize)
-        ha = HeatmapAnnotation(
-            **{k: anno_simple(v, cmap='Set2') for k, v in clusters.items()},
-            label_side="bottom",
-            axis=0
-        )
-
-        col_annot = HeatmapAnnotation(
-            **{f"adjp_{k}": anno_scatterplot(adjusted_pval[k], height=20) for k in adjusted_pval},
-            **{f"log2_fc_{k}": anno_scatterplot(log2_fc[k], height=20) for k in log2_fc},
-            hgap=3,
-            legend=False
-        )
-        row_cluster = row_cluster if data.shape[1] > clusters[split_key].unique().shape[0] else False
-
-        cm1 = ClusterMapPlotter(data,
-                                left_annotation=ha,
-                                top_annotation=col_annot,
-                                col_cluster=col_cluster,
-                                row_cluster=row_cluster,
-                                row_split=clusters[split_key],
-                                col_split_gap=col_split_gap,
-                                row_split_gap=row_split_gap,
-                                label=label,
-                                row_dendrogram=row_dendrogram,
-                                show_rownames=show_rownames,
-                                show_colnames=show_colnames,
-                                subplot_gap=subplot_gap,
-                                tree_kws=tree_kws,
-                                verbose=verbose,
-                                legend_gap=legend_gap,
-                                legend_hpad=legend_hpad,
-                                legend_vpad=legend_vpad,
-                                cmap=cmap,
-                                xticklabels_kws=xticklabels_kws,
-                                row_cluster_method="average",
-                                **kwargs)
-        if save:
-            plt.savefig(output_path / filename, bbox_inches='tight', dpi=300)
-        else:
-            fig.show()
-
-        return fig
-
-    def preprocess_df(self):
-        df = self.df.to_pandas()
-        df = df[~df[self.outer_group_column].isin(["NA", "NaN", "None"])]
-        df = df[~df[self.outer_group_column].isna()]
-        self.df = df
-
-    def extract_column_for_statistical_test(self, df):
+    def __extract_column_for_statistical_test(self, df):
         return df[[self.outer_group_column, self.inner_group_column, self.value_column]]
 
-    def extract_column_for_plot(self, df):
+    def __extract_column_for_plot(self, df):
         return df[[self.outer_group_column, self.inner_group_column, self.value_column, "sample_name"]]
 
-    def normalize_between_samples(self, df, normalization_type=RobustScaler, normalization_type_kwgs=None):
+    def __normalize_between_samples(self, df, normalization_type=RobustScaler, normalization_type_kwargs=None):
         df = df.copy()
-        normalization_type_kwgs = {} if normalization_type_kwgs is None else normalization_type_kwgs
+        normalization_type_kwargs = {} if normalization_type_kwargs is None else normalization_type_kwargs
         df_group_col = df[[self.outer_group_column, "sample_name"]].copy()
         df = df.pivot_table(index="sample_name",
                             columns=self.inner_group_column,
                             values=self.value_column)
         columns = df.columns.copy()
         index = df.index.copy()
-        df = normalization_type(**normalization_type_kwgs).fit_transform(df)
+        df = normalization_type(**normalization_type_kwargs).fit_transform(df)
         df = pd.DataFrame(df, columns=columns, index=index)
         df = df.reset_index().melt(id_vars=["sample_name"], var_name=self.inner_group_column,
                                    value_name=self.value_column)
         return pd.merge(df, df_group_col, on='sample_name', how='inner')
 
     @staticmethod
-    def attach_group_column(x, group_name):
+    def __attach_group_column(c, group_name):
         return pd.DataFrame(
             {
-                "group": x.apply(lambda x: group_name),
-                "value": x
+                "group": c.apply(lambda x: group_name),
+                "value": c
             }
         )
 
-    def get_diff_active_gi_two_groups(self, genomic_intervals_groups, groups_names_combinations):
+    def __get_diff_active_gi_two_groups(self, genomic_intervals_groups, groups_names_combinations):
         group_1_name, group_2_name = groups_names_combinations[0]
         matrix_res = []
         for gi in genomic_intervals_groups.groups:
-            gi_groups_gruped_by_group = genomic_intervals_groups.get_group(gi).groupby(self.outer_group_column)
+            gi_groups_grouped_by_group = genomic_intervals_groups.get_group(gi).groupby(self.outer_group_column)
 
             long_df = pd.concat([
-                self.attach_group_column(remove_outliers(group[self.value_column]), name)
+                self.__attach_group_column(remove_outliers(group[self.value_column]), name)
                 if self.remove_outliers
-                else self.attach_group_column(group[self.value_column], name)
+                else self.__attach_group_column(group[self.value_column], name)
                 for name, group
-                in gi_groups_gruped_by_group])
+                in gi_groups_grouped_by_group
+            ])
 
             groups_values = {name: group.value.values for name, group in long_df.groupby("group")}
-            _, p_value = scipy.stats.mannwhitneyu(groups_values[group_1_name], groups_values[group_2_name])
+            _, p_value = mannwhitneyu(groups_values[group_1_name], groups_values[group_2_name])
 
             group_df_means = long_df.groupby("group").mean()
             group_df_stds = long_df.groupby("group").std()
@@ -293,17 +357,17 @@ class DiffSignalAnalysis:
         df[self.inner_group_column] = df[self.inner_group_column].str.replace("/", "_")
         return df
 
-    def get_diff_active_gi_multiple_groups(self, genomic_intervals_groups, groups_names_combinations):
+    def __get_diff_active_gi_multiple_groups(self, genomic_intervals_groups, groups_names_combinations):
         matrix_res = []
         for gi in genomic_intervals_groups.groups:
-            gi_groups_gruped_by_group = genomic_intervals_groups.get_group(gi).groupby(self.outer_group_column)
+            gi_groups_grouped_by_group = genomic_intervals_groups.get_group(gi).groupby(self.outer_group_column)
 
             long_df = pd.concat([
-                self.attach_group_column(remove_outliers(group[self.value_column]), name)
+                self.__attach_group_column(remove_outliers(group[self.value_column]), name)
                 if self.remove_outliers
-                else self.attach_group_column(group[self.value_column], name)
+                else self.__attach_group_column(group[self.value_column], name)
                 for name, group
-                in gi_groups_gruped_by_group])
+                in gi_groups_grouped_by_group])
 
             kruskal_p_value = kruskal(*[group.value for name, group in long_df.groupby("group")]).pvalue
             perform_dunn_test = True if kruskal_p_value <= self.alpha else False
@@ -348,37 +412,16 @@ class DiffSignalAnalysis:
         df[self.inner_group_column] = df[self.inner_group_column].str.replace("/", "_")
         return df
 
-    def run(self):
-        self.preprocess_df()
-        df_for_statistical_tests = self.extract_column_for_plot(self.df)
-
-        # df_for_statistical_tests = self.normalize_between_samples(df_for_statistical_tests)
-        genomic_intervals_groups = df_for_statistical_tests.groupby(self.inner_group_column)
-        group_names = self.df[self.outer_group_column].unique()
-        groups_names_combinations = sorted(combinations(group_names, 2))
-        n_groups = len(group_names)
-
-        if n_groups == 2:
-            df = self.get_diff_active_gi_two_groups(genomic_intervals_groups, groups_names_combinations)
-            self.results = self.get_global_correction_two_groups(df)
-        elif n_groups > 2:
-            df = self.get_diff_active_gi_multiple_groups(genomic_intervals_groups, groups_names_combinations)
-            self.results = self.get_global_correction_multiple_groups(df)
+    def __get_background(self, df):
+        if self.use_provided_gi:
+            background = df.genomic_interval.unique()
+        elif self.user_background is not None:
+            background = self.user_background
         else:
-            raise ValueError(f"Number of groups should be 2 or more found {len(group_names)}")
+            background = None
+        return background
 
-        diff_active_region_per_group_pair = self.results.query("Rejected == True").groupby("group_pairs")
-
-        self.enrichment_results = {
-            f"{group_pair}": self._get_enrichment(
-                diff_active_region_per_group_pair.get_group(group_pair)[self.inner_group_column]
-                .to_list()
-            )
-            for group_pair in diff_active_region_per_group_pair.groups
-        }
-        return self
-
-    def get_global_correction_multiple_groups(self, df_):
+    def __get_global_correction_multiple_groups(self, df_):
         df_ = df_.copy()
 
         unique_kruskal = df_.loc[:, [self.inner_group_column, "kruskal_p_value"]].drop_duplicates()
@@ -420,7 +463,7 @@ class DiffSignalAnalysis:
         )
         return df_
 
-    def get_global_correction_two_groups(self, df_):
+    def __get_global_correction_two_groups(self, df_):
         df_ = df_.copy()
 
         df_.loc[:, "adj_p-val"] = statsmodels.stats.multitest.multipletests(
@@ -435,6 +478,9 @@ class DiffSignalAnalysis:
         return df_
 
     def plot_barplot_rejected_per_group(self):
+        if self.results is None:
+            logger.warning("Analysis has not been run yet. Run it using the run() method before plotting.")
+            return None
         fig, ax = plt.subplots(1, figsize=(10, 10), dpi=300)
         df_to_plot = self.results.query("Rejected == True").groupby("group_pairs").count()[["Rejected"]]
         if not df_to_plot.empty:
@@ -452,6 +498,9 @@ class DiffSignalAnalysis:
             return None
 
     def plot_coverage(self, gi):
+        if self.results is None:
+            logger.warning("Analysis has not been run yet. Run it using the run() method before plotting.")
+            return None
         signal_shape = len(self.signal_col_index)
         if self.results is None:
             logger.warning("Analysis has not been run yet. Running analysis first")
@@ -490,13 +539,10 @@ class DiffSignalAnalysis:
         fig.legend()
         ax.grid(linestyle='dashed')
         ax.set_ylabel("normalized coverage")
-        ax.set_xlabel("position aruond GI center")
+        ax.set_xlabel("position around GI center")
         return fig
 
-    def get_output_folder(self):
-        return f"{self.time_stamp}__{self.run_id}"
-
-    def save_results_per_group_pair(self, any_rejected: bool):
+    def __save_results_per_group_pair(self, any_rejected: bool):
 
         if self.results is None:
             logger.warning("Analysis has not been run yet. Running analysis first")
@@ -516,135 +562,13 @@ class DiffSignalAnalysis:
             if self.enrichment_results.get(group_pair, None) is not None:
                 self.enrichment_results.get(group_pair).to_csv(output_path_group_pair / f"enrichment_{group_pair}.csv")
 
-            if any_rejected and self.save_indivitual_plots:
+            if any_rejected and self.save_individual_plots:
                 rejected_gi = group.query('Rejected == True')
                 for genomic_interval in rejected_gi[self.inner_group_column]:
                     fig = self.plot_coverage(gi=genomic_interval)
                     fig.savefig(output_path_group_pair / f"coverage_{genomic_interval}.png")
                     plt.close(fig)
         return self
-
-    def save_results(self):
-        output_path = self.output_path / self.get_output_folder()
-        output_path.mkdir(exist_ok=True, parents=True)
-
-        rejected_tfs = self.results.query("Rejected == True").genomic_interval.unique()
-
-        df_heatmap = (
-            self.extract_column_for_plot(self.df.loc[self.df[self.inner_group_column].isin(rejected_tfs)])
-            .pivot_table(index="sample_name",
-                         columns=self.inner_group_column,
-                         values=self.value_column,
-                         fill_value=0)
-        )
-
-        def get_outliars_mask(column, bound="lower"):
-            Q1 = column.quantile(0.25)
-            Q3 = column.quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 1.5 * IQR
-            upper_bound = Q3 + 1.5 * IQR
-            if bound == "lower":
-                return column < lower_bound
-            else:
-                return column > upper_bound
-
-        def replace_outliars(x_):
-            x = x_.copy()
-            mask_lower = get_outliars_mask(x, bound="lower")
-            mask_upper = get_outliars_mask(x, bound="upper")
-            x[mask_lower] = x[~mask_lower].min()
-            x[mask_upper] = x[~mask_upper].max()
-
-            return x
-
-        any_rejected = True if rejected_tfs.shape[0] > 0 else False
-
-        clusters = {"groups": self.df.groupby("sample_name")[self.outer_group_column].first()}
-        filter_rows = self.results[self.inner_group_column].isin(rejected_tfs)
-        adjusted_pvals = (
-            self.results.loc[filter_rows]
-            .pivot_table(index="group_pairs",
-                         columns=self.inner_group_column,
-                         values="adj_p-val",
-                         fill_value=np.nan).T
-        )
-        mean_1 = self.results.mean_group_1.values
-        mean_2 = self.results.mean_group_2.values
-
-        fc = mean_1 / mean_2
-        log2_fc = np.log2(np.abs(fc))
-        self.non_interpretable_fc = fc < 0
-        states = get_state(mean_1, mean_2)
-        self.results.loc[:, "log2_fc"] = log2_fc
-        self.results.loc[:, "signed_log2"] = signed_log2(fc)
-        self.results.loc[:, "state"] = states
-        self.results.loc[:, "change"] = mean_1 - mean_2
-
-        log2_fc_vals = (
-            self.results
-            .assign(log2_fc=log2_fc)
-            .pivot_table(index="group_pairs",
-                         columns=self.inner_group_column,
-                         values="log2_fc",
-                         fill_value=np.nan)
-        ).T
-
-        if not df_heatmap.empty:
-            df_heatmap = pd.DataFrame(
-                data=MinMaxScaler().fit_transform(df_heatmap.apply(lambda x: replace_outliars(x), axis=0)),
-                columns=df_heatmap.columns,
-                index=df_heatmap.index
-            )
-
-            figsize_height = 10 + (df_heatmap.shape[1] // 20) + (clusters["groups"].unique().shape[0] * 2)
-            figsize_width = 10 + ((df_heatmap.shape[1] // 20) * 3)
-            self.plot_heatmap(
-                df_heatmap,
-                clusters=clusters,
-                split_key="groups",
-                adjusted_pval=adjusted_pvals,
-                log2_fc=log2_fc_vals.loc[rejected_tfs, :],
-                output_path=output_path,
-                filename="fextract_diff_signals_heatmap.png",
-                save=True,
-                figsize=(
-                    figsize_width,
-                    figsize_height,
-                ),
-                cmap="RdYlBu_r"
-            )
-        fig = self.plot_barplot_rejected_per_group()
-        if fig:
-            fig.savefig(output_path / "fextract_diff_signals_per_group_bar_plot.png")
-            plt.close(fig)
-        self.save_results_per_group_pair(any_rejected=any_rejected)
-
-        return self
-
-    def _get_enrichment(self, genes: list[str]) -> pd.DataFrame | None:
-        if self.results is not None:
-            if not self.results.empty:
-                try:
-                    string_ids = stringdb.get_string_ids(genes).queryItem.to_list()
-                    sleep(1)
-                    return stringdb.get_enrichment(string_ids, )[
-                        ["category", "preferredNames", "p_value", "fdr", "description"]]
-                except ValueError as e:
-                    logger.warning("There was an error with the string database server. "
-                                   "Enrichment analysis could not be retrieved. the error was:\n"
-                                   f"{e}")
-                except KeyError as e:
-                    logger.warning("Get enrichment failed due to a databse problem")
-                    return None
-
-            else:
-                logger.warning("results are empty, enrichment can not be calculated")
-                return None
-        else:
-            logger.warning("Analysis has not been run yet. Running analysis first")
-            self.run()
-            return self._get_enrichment(genes)
 
 
 def parse_indices(ctx, param, value: str) -> tuple[int, int] | None:
@@ -689,9 +613,18 @@ def create_path(ctx, param, value):
 @click.option("--correction_method", type=str, default="hs", show_default=True)
 @click.option("--max_iter", type=int, default=1, show_default=True)
 @click.option("--alpha", type=float, default=0.05, show_default=True)
-@click.option("--remove_outliars", is_flag=True, default=False, show_default=True)
+@click.option("--rm_outliers", is_flag=True, default=False, show_default=True)
 @click.option("--commit_hash", type=str, default="Not Provided", show_default=True)
-@click.option("--save_indivitual_plots", is_flag=True, default=False, show_default=True)
+@click.option("--save_individual_plots", is_flag=True, default=False, show_default=True)
+@click.option("--use_provided_gi", is_flag=True, default=False, show_default=True,
+              help="Use the provided genomic intervals as background for the enrichment analysis")
+@click.option("--user_background",
+              type=click.Path(exists=True, path_type=pathlib.Path, dir_okay=False,
+                              file_okay=True, readable=True, resolve_path=False,
+                              allow_dash=True),
+              default=None,
+              show_default=True,
+              help="Path to a file containing a list of genomic intervals to be used as background for the enrichment analysis")
 @click.pass_context
 def cli(ctx,
         path_to_res_summary: pathlib.Path,
@@ -708,9 +641,29 @@ def cli(ctx,
         alpha: float,
         overwrite: bool,
         path_to_sample_sheet: pathlib.Path,
-        remove_outliars: bool,
+        rm_outliers: bool,
         commit_hash: str,
-        save_indivitual_plots: bool):
+        save_individual_plots: bool,
+        user_background: pathlib.Path,
+        use_provided_gi: bool
+        ):
+    """
+        This command group contains all commands related to post-extraction analysis of feature extraction results.
+
+        \b
+        For a list of available commands and their short descriptions, use:
+
+        \b
+            lbfextract post_extraction_analysis_commands --help
+        \n
+
+        \b
+        For detailed help on a specific command, including available arguments and their default values, use:
+        \b
+            lbfextract post_extraction_analysis_commands [command] --help
+        \n
+    """
+
     ctx.obj = dict()
     ctx.obj["path_to_res_summary"] = path_to_res_summary
     ctx.obj["signal_length"] = signal_length
@@ -726,14 +679,24 @@ def cli(ctx,
     ctx.obj["alpha"] = alpha
     ctx.obj["overwrite"] = overwrite
     ctx.obj["path_to_sample_sheet"] = path_to_sample_sheet
-    ctx.obj["remove_outliers"] = remove_outliars
+    ctx.obj["rm_outliers"] = rm_outliers
     ctx.obj["commit_hash"] = commit_hash
-    ctx.obj["save_indivitual_plots"] = save_indivitual_plots
+    ctx.obj["save_individual_plots"] = save_individual_plots
+    ctx.obj["use_provided_gi"] = use_provided_gi
+    ctx.obj["user_background"] = user_background
 
 
-@cli.command()
+@cli.command(short_help="It extracts differentially active TFs between 2 or multiple groups")
 @click.pass_context
 def get_differentially_active_genomic_intervals(ctx):
+    """
+    This command extracts the differentially active TFs between 2 or more groups and returns a table of differentially
+    active TFs together with their adjusted-p value calculated according to the selected method
+    (default: Benjamini-Hochberg procedure). In the former case the Mann-Whitney-Wilcoxon test is used, in the latter
+    the Kruskal-Wallis test is used.
+    """
+    logger.info("Starting the analysis ... ")
+
     starting_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     output_path = ctx.obj["output_path"] / "fextract_diff_signal_results"
     output_path.mkdir(exist_ok=True)
@@ -741,11 +704,18 @@ def get_differentially_active_genomic_intervals(ctx):
         start=ctx.obj["center_signal_indices"][0],
         end=ctx.obj["center_signal_indices"][1]
     )
+    if ctx.obj["user_background"]:
+        user_background = pd.read_csv(ctx.obj["user_background"], header=None)[0].to_list()
+    else:
+        user_background = None
+    logger.info(f"Loading all signals present in: {ctx.obj['path_to_res_summary']} ... ")
+
     df_results = ResultsLoader(ctx.obj["path_to_res_summary"],
                                accessibility_extraction_config,
                                ctx.obj["signal_length"],
                                ctx.obj["flanking_signal_indices"],
-                               ctx.obj["normalize"], path_to_sample_sheet=ctx.obj["path_to_sample_sheet"],
+                               ctx.obj["normalize"],
+                               path_to_sample_sheet=ctx.obj["path_to_sample_sheet"],
                                grouping_column=ctx.obj["outer_group_column"]).load()
 
     diff_signal_analysis = DiffSignalAnalysis(df=df_results,
@@ -758,11 +728,17 @@ def get_differentially_active_genomic_intervals(ctx):
                                               signal_col_index=[str(i) for i in range(ctx.obj["signal_length"])],
                                               output_path=output_path,
                                               overwrite=ctx.obj["overwrite"],
-                                              remove_outliers=ctx.obj["remove_outliers"],
-                                              save_indivitual_plots=ctx.obj["save_indivitual_plots"])
+                                              rm_outliers=ctx.obj["rm_outliers"],
+                                              save_individual_plots=ctx.obj["save_individual_plots"],
+                                              user_background=user_background,
+                                              use_provided_gi=ctx.obj["use_provided_gi"])
+    logger.info(f"Starting the differential activity calculation ... ")
 
     diff_signal_analysis.run()
+    logger.info(f"Saving the results ... ")
+
     diff_signal_analysis.save_results()
+    logger.info(f"Results were saved.They are located at  {output_path}")
 
     metadata = dict(
         paccakge_repo="LBFextract",
@@ -784,9 +760,11 @@ def get_differentially_active_genomic_intervals(ctx):
         max_iter=ctx.obj["max_iter"],
         alpha=ctx.obj["alpha"],
         overwrite=ctx.obj["overwrite"],
-        remove_outliers=ctx.obj["remove_outliers"],
-        save_indivitual_plots=ctx.obj["save_indivitual_plots"]
+        remove_outliers=ctx.obj["rm_outliers"],
+        save_individual_plots=ctx.obj["save_individual_plots"]
     )
+    logger.info("Metadata:")
+    logger.info(metadata)
 
     results = dict(
         results=diff_signal_analysis.results,
@@ -795,16 +773,28 @@ def get_differentially_active_genomic_intervals(ctx):
 
     )
     import dill
-    with open(output_path / diff_signal_analysis.get_output_folder() / "metadata.json", "w") as f:
+    path_to_metadata = output_path / diff_signal_analysis.get_output_folder() / "metadata.json"
+    logger.info(f"Saving metadata to: {path_to_metadata} ")
+
+    path_to_result_object = output_path / diff_signal_analysis.get_output_folder() / "results.pkl"
+    logger.info(f"Saving result object to: {path_to_result_object} ")
+
+    with open(path_to_metadata, "w") as f:
         json.dump(metadata, f, indent=4, sort_keys=True, default=str)
-    with open(output_path / diff_signal_analysis.get_output_folder() / "results.pkl", "wb") as f:
+
+    with open(path_to_result_object, "wb") as f:
         dill.dump(results, f)
     logger.info("finished")
 
 
-@cli.command()
+@cli.command(short_help="It generates the samples sheet used by the get_differentially_active_genomic_intervals "
+                        "command.")
 @click.pass_context
 def generate_sample_sheet(ctx):
+    """
+    This command generate the sample sheet, which needs to be filled with the group membership before running the
+    get_differentially_active_genomic_intervals command.
+    """
     output_path = ctx.obj["output_path"] / "fextract_diff_signal_results"
     output_path.mkdir(exist_ok=True)
     df_results = ResultsLoader(ctx.obj["path_to_res_summary"], ctx.obj["signal_length"],

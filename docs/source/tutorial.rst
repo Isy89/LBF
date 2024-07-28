@@ -64,7 +64,7 @@ To install the LBFextract package the following command can be run:
 
     python -m pip install .
 
-To be sure that the installation succeded, we can run the following command:
+To be sure that the installation succeeded, we can run the following command:
 
 .. code-block:: bash
 
@@ -76,8 +76,6 @@ To install lbfextract specific conda environment to have a separate running samt
 .. code-block:: bash
 
     lbfextract setup create-conda-envs
-
-this step can be skipped if samtools is already installed in the system and the correct version is available.
 
 LBF extract can be used in 3 ways:
 
@@ -363,10 +361,10 @@ Once the groups are given and the sample name corrected we can start the differe
 .. code-block:: bash
 
     lbfextract post_extraction_analysis_commands \
-    --save_indivitual_plots \
+    --save_individual_plots \
     --commit_hash "TEST" \
     --center_signal_indices "1985,2015" \
-    --remove_outliars \
+    --rm_outliers \
     --flanking_signal_indices "1000,3000" \
     --correction_method "fdr_bh" \
     --max_iter 1 \

@@ -318,7 +318,7 @@ class FextractApp(App):
         self.query_one(f"#{self.pressed_botton}").remove_class("pressed")
 
 
-@click.command(short_help="It starts the Terminal User Interface (TUI)")
+@click.command(short_help="This command starts the Terminal User Interface (TUI)")
 @click.option('--path_to_root_dir', type=click.Path(exists=False,
                                                     file_okay=True,
                                                     dir_okay=True,
@@ -333,7 +333,7 @@ class FextractApp(App):
               help='signal type to extract from the bam file')
 def start_tui(path_to_root_dir: str, signal_type: str):
     """
-    Starts the Text User Interface (TUI) for feature extraction.
+    Starts the feature extraction Terminal User Interface (TUI).
     Use this command to launch the TUI and specify the directory tree root and signal type as needed.
     """
     app = FextractApp(path=path_to_root_dir, signal_type=signal_type)

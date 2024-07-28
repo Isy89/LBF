@@ -1,5 +1,6 @@
 import itertools
 import logging
+import pathlib
 from typing import Union
 
 import matplotlib
@@ -7,10 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn
+from PyComplexHeatmap import ClusterMapPlotter, HeatmapAnnotation, anno_simple, anno_scatterplot
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from scipy.signal import savgol_filter
 from sklearn.decomposition import PCA
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
 
 logger = logging.getLogger(__name__)
 
@@ -579,3 +581,108 @@ def plot_fragment_length_distribution(array: np.array,
         axs_distr_plots[count].set_title(f"\u03BCFLD: [{pos - 2000}, {next_pos - 2000})", fontsize=small_font_size)
         pos = next_pos
     return fig
+
+
+def plot_heatmap_diff_active_gi(data,
+                                clusters: dict,
+                                split_key,
+                                save: bool,
+                                adjusted_pval: dict[pd.Series],
+                                log2_fc: dict[pd.Series],
+                                figsize=(10, 10),
+                                filename: str = "heatmap_diff_active_signals.pdf",
+                                output_path: pathlib.Path = None,
+                                col_cluster=True,
+                                row_cluster=True,
+                                col_split_gap=0.8,
+                                row_split_gap=0.8,
+                                label='values',
+                                row_dendrogram=True,
+                                show_rownames=True,
+                                show_colnames=True,
+                                subplot_gap=5,
+                                legend_vpad=15,
+                                tree_kws=None,
+                                verbose=0,
+                                legend_gap=5,
+                                legend_hpad=5,
+                                cmap='RdYlBu_r',
+                                xticklabels_kws={'labelrotation': -90, 'labelcolor': 'black'},
+                                **kwargs
+                                ):
+    tree_kws = {'row_cmap': 'Set1'} if tree_kws is None else tree_kws
+    data_for_plot = dict(
+        data=data,
+        clusters=clusters,
+        split_key=split_key,
+        save=save,
+        adjusted_pval=adjusted_pval,
+        log2_fc=log2_fc,
+        figsize=figsize,
+        filename=filename,
+        output_path=output_path,
+        col_cluster=col_cluster,
+        row_cluster=row_cluster,
+        col_split_gap=col_split_gap,
+        row_split_gap=row_split_gap,
+        label=label,
+        row_dendrogram=row_dendrogram,
+        show_rownames=show_rownames,
+        show_colnames=show_colnames,
+        subplot_gap=subplot_gap,
+        legend_vpad=legend_vpad,
+        tree_kws=tree_kws,
+        verbose=verbose,
+        legend_gap=legend_gap,
+        legend_hpad=legend_hpad,
+        cmap=cmap,
+        xticklabels_kws=xticklabels_kws,
+        **kwargs
+
+    )
+
+    output_path = output_path if output_path else pathlib.Path.cwd()
+
+    fig = plt.figure(figsize=figsize)
+    ha = HeatmapAnnotation(
+        **{k: anno_simple(v, cmap='Set2') for k, v in clusters.items()},
+        label_side="bottom",
+        axis=0
+    )
+
+    col_annot = HeatmapAnnotation(
+        **{f"adjp_{k}": anno_scatterplot(adjusted_pval[k], height=20) for k in adjusted_pval},
+        **{f"log2_fc_{k}": anno_scatterplot(log2_fc[k], height=20) for k in log2_fc},
+        hgap=3,
+        legend=False
+    )
+    row_cluster = row_cluster if data.shape[1] > clusters[split_key].unique().shape[0] else False
+
+    cm1 = ClusterMapPlotter(data,
+                            left_annotation=ha,
+                            top_annotation=col_annot,
+                            col_cluster=col_cluster,
+                            row_cluster=row_cluster,
+                            row_split=clusters[split_key],
+                            col_split_gap=col_split_gap,
+                            row_split_gap=row_split_gap,
+                            label=label,
+                            row_dendrogram=row_dendrogram,
+                            show_rownames=show_rownames,
+                            show_colnames=show_colnames,
+                            subplot_gap=subplot_gap,
+                            tree_kws=tree_kws,
+                            verbose=verbose,
+                            legend_gap=legend_gap,
+                            legend_hpad=legend_hpad,
+                            legend_vpad=legend_vpad,
+                            cmap=cmap,
+                            xticklabels_kws=xticklabels_kws,
+                            row_cluster_method="average",
+                            **kwargs)
+    if save:
+        plt.savefig(output_path / filename, bbox_inches='tight', dpi=300)
+    else:
+        fig.show()
+
+    return fig, data_for_plot

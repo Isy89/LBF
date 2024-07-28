@@ -2,6 +2,7 @@ import logging
 import pathlib
 
 from click.testing import CliRunner
+
 from lbfextract.cli import cli
 
 path_to_tests_folder = pathlib.Path(__file__).parent
@@ -13,6 +14,7 @@ path_to_bam_for_dyads = path_to_tests_folder / "test_dataset" / "bam" / "fextrac
 output_path = path_to_tests_folder / "test_out" / "test_cli"
 
 logger = logging.getLogger(__name__)
+
 
 class TestCli:
 
@@ -67,7 +69,6 @@ class TestCli:
         result = runner.invoke(cli, cmd)
 
         assert result.exit_code == 0
-        
 
     def test_extract_coverage_around_dyads(self):
         cmd = [
@@ -248,7 +249,7 @@ class TestCli:
                "--path_to_bam", str(path_to_bam_for_in_batch_tests),
                "--path_to_bed", str(path_to_bed_dir),
                "--output_path", str(output_path),
-               "--n_reads", str(20000),
+               "--n_reads", str(25000),
                "--subsample"
                ]
         runner = CliRunner()
@@ -417,7 +418,7 @@ class TestCli:
         print(" ".join(cmd))
         result = runner.invoke(cli, cmd)
         assert result.exit_code == 0
-        
+
     def test_extract_fragment_length_distribution_fld_in_batch(self):
         cmd = [
             'feature_extraction_commands',
@@ -435,7 +436,7 @@ class TestCli:
 
         result = runner.invoke(cli, cmd)
         assert result.exit_code == 0
-        
+
     def test_extract_fragment_length_distribution_fld_dyads_in_batch(self):
         cmd = [
             'feature_extraction_commands',
@@ -472,7 +473,7 @@ class TestCli:
         print(" ".join(cmd))
         result = runner.invoke(cli, cmd)
         assert result.exit_code == 0
-        
+
     def test_extract_relative_entropy_to_flanking_gc_corrected(self):
         cmd = [
             'feature_extraction_commands',
