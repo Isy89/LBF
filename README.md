@@ -83,7 +83,7 @@ To install this conda env run the following command:
 lbfextract setup create-conda-envs # creates a separate conda env used for filtering the bam files and other steps
 ```
 
-if using bash, autocompletion can be enabled (at the moment it only support autocompletion for bash, other shell will be added in the feature...):
+if using bash, autocompletion can be enabled (at the moment it only supports autocompletion for bash, other shells will be added in the feature...):
 
 ```bash
 lbfextract setup enable-autocompletion
