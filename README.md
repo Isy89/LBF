@@ -76,15 +76,14 @@ python -m pip install .
 ```
 
 After the installation, the command line interface lbfextract should be available.
-Using it, a conda environment isolated from the current one containing samtools can be created.
-This step can be omitted if samtools~=1.14 is already present.
-This installation of this conda env is done as follows:
+Using it, a conda environment isolated from the current one containing samtools need to be created.
+To install this conda env run the following command:
 
 ```bash
 lbfextract setup create-conda-envs # creates a separate conda env used for filtering the bam files and other steps
 ```
 
-if using bash, autocompletion can be enabled (at the moment it only support autocompletion for bash, other shell will be added in the feature...):
+if using bash, autocompletion can be enabled (at the moment it only supports autocompletion for bash, other shells will be added in the feature...):
 
 ```bash
 lbfextract setup enable-autocompletion
