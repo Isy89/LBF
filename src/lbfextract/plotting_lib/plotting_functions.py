@@ -116,7 +116,8 @@ def plot_signal_batch(df: pd.DataFrame,
                       bottom: int = 5,
                       window_center: int = 50,
                       mask_rows: list[bool] = None,
-                      max_signals: int = 10
+                      max_signals: int = 10,
+                      sort_values: bool = True
                       ) -> tuple[Figure, Axes]:
     """
     Plots the signal for the top and bottom BED files based on their peak or deep in the central part of the signal one
@@ -143,6 +144,7 @@ def plot_signal_batch(df: pd.DataFrame,
                           50.
     :param mask_rows: The mask rows to apply to the DataFrame. Default is None.
     :param max_signals: It describes the maximum number of BED files signals to be plotted.
+    :param sort_values: It describes whether the profiles should be sorted based on their amplitude
     :return: A tuple containing the figure and axes objects (fig, ax).
     """
 
@@ -159,13 +161,13 @@ def plot_signal_batch(df: pd.DataFrame,
 
     two_fifths = (bps // 5) * 2
 
-    if flanking > two_fifths:
+    if flanking >= two_fifths:
         logger.warning(f"flanking is too large, {two_fifths} will be used instead")
         flanking = two_fifths
 
-    if window_center > two_fifths / 4:
-        logger.warning(f"window_center is too large, {two_fifths / 4} will be used instead")
-        window_center = two_fifths / 4
+    if window_center > two_fifths // 4:
+        logger.warning(f"window_center is too large, {two_fifths // 4} will be used instead")
+        window_center = two_fifths // 4
 
     mask_indices = np.arange(bps)
     mask = np.logical_or(
@@ -183,8 +185,10 @@ def plot_signal_batch(df: pd.DataFrame,
             indices_intervals < bottom,
             indices_intervals >= n_intervals - top
         )
+    df["orig_row_number"] = np.arange(df.shape[0])
     df = df.sort_values(by="amplitude", ascending=False)
-    df = df.iloc[mask_rows, :-2]
+    df = df.iloc[mask_rows, :]
+    df = df.sort_values(by="orig_row_number", ascending=True).iloc[:, :-3] if not sort_values else df.iloc[:, :-3]
     n_intervals = df.shape[0]
     bps = df.shape[1]
     plus_minus = u"\u00B1"
