@@ -43,11 +43,19 @@ def get_peaks(distribution, height=0.0001, distance=100):
 
 
 def subsample_fragment_lengths(x, n):
-    new_x = np.zeros_like(x)
-    subsampled_reads = np.random.choice(np.arange(0, x.shape[0]), size=n,
-                                        p=np.where(x > 0, x / x.sum(), 0), replace=True)
-    for i in range(x.shape[0]):
-        new_x[i] = np.sum(subsampled_reads == i)
+    mask = x > 0
+    probabilities = np.zeros_like(x)
+    probabilities[mask] = x[mask] / x[mask].sum()
+    try:
+        subsampled_reads = np.random.choice(len(x), size=n, p=probabilities, replace=True)
+    except ValueError as e:
+        if str(e) == "probabilities do not sum to 1":
+            probabilities = np.ones_like(probabilities) / len(probabilities)
+            subsampled_reads = np.random.choice(len(x), p=probabilities)
+        else:
+            raise
+
+    new_x = np.bincount(subsampled_reads, minlength=len(x))
     return new_x
 
 

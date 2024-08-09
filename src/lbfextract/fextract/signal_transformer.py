@@ -58,7 +58,7 @@ class TFBSCoverageAroundDyads:
         relative_start = read.pos - start
         f = np.abs(read.template_length)
         s = []
-        nucleosome_length = self.peaks[0]
+        nucleosome_length = self.peaks[0] + 5
         n_of_possible_nucleosomes = f // nucleosome_length
         remainder = f % nucleosome_length
         p_same = ((nucleosome_length - remainder) / nucleosome_length)
@@ -68,18 +68,34 @@ class TFBSCoverageAroundDyads:
              n_of_possible_nucleosomes + 1],
             p=[p_same, p_next]
         )
-        expanded_fragment_length = n_of_possible_nucleosomes * nucleosome_length if n_of_possible_nucleosomes > 0 else nucleosome_length
-        middle_point = f // 2
-        relative_middle_point = relative_start + middle_point
-        relative_start = relative_middle_point - (expanded_fragment_length // 2)
-        if n_of_possible_nucleosomes > 0:
-            m = expanded_fragment_length // (n_of_possible_nucleosomes * 2)
-        else:
-            m = expanded_fragment_length // 2
-        for i in range(1, n_of_possible_nucleosomes * 2, 2):
-            n_s = relative_start + (m * i) - self.n
-            n_e = relative_start + (m * i) + self.n
-            s.append((n_s, n_e))
+
+        def get_expanded_length(n_of_possible_nucleosomes_, nucleosome_length_):
+            if n_of_possible_nucleosomes_ <= 1:
+                return nucleosome_length_
+            else:
+                return n_of_possible_nucleosomes_ * nucleosome_length_ 
+
+        def get_nucleosome_centers(n_of_possible_nucleosomes_, nucleosome_length_):
+            if n_of_possible_nucleosomes_ <= 1:
+                return [nucleosome_length_ // 2]
+            elif n_of_possible_nucleosomes_ == 2:
+                return [nucleosome_length_ // 2, nucleosome_length_ * 3 - (nucleosome_length_ // 2)]
+            elif n_of_possible_nucleosomes_ == 3:
+                return [nucleosome_length_ // 2,
+                        (nucleosome_length_ * 3) // 2,
+                        nucleosome_length_ * 3 - (nucleosome_length_ // 2)]
+            else:
+                return [nucleosome_length_ // 2 + (i * nucleosome_length_)
+                        for i in range(n_of_possible_nucleosomes_)]
+
+        expanded_fragment_length = get_expanded_length(n_of_possible_nucleosomes, nucleosome_length)
+        midpoint = relative_start + (f // 2)
+        relative_expanded_start = midpoint - (expanded_fragment_length // 2)
+        centers = get_nucleosome_centers(n_of_possible_nucleosomes, nucleosome_length)
+        for center in centers:
+            n_s = relative_expanded_start + center - self.n
+            n_e = relative_expanded_start + center + self.n
+            s.append([n_s, n_e])
         return s
 
     def __call__(self, x: GenomiIntervalDataFrameRow):

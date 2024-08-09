@@ -550,7 +550,7 @@ def plot_fragment_length_distribution(array: np.array,
     seaborn.heatmap(df, ax=ax_heatmap, rasterized=True, cbar_kws={
         "orientation": "horizontal",
     })
-    ax_heatmap.set_yticks([0, array.shape[0] // 2, array.shape[0]], [start_pos, (end_pos - start_pos) // 2, end_pos],
+    ax_heatmap.set_yticks([0, array.shape[0] // 2, array.shape[0]], [start_pos, (start_pos + end_pos) // 2, end_pos],
                           fontsize=general_font_size)
     ax_heatmap.set_xticks([0, array.shape[-1] // 2, array.shape[-1]], [-array.shape[-1] // 2, 0, +array.shape[-1] // 2],
                           fontsize=general_font_size)

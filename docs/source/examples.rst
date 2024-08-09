@@ -73,7 +73,7 @@ interval, which for TFBSs and TSSs correspond to the point in which a dip or a p
 In this summary, the amplitudes are reported for the top and bottom n genes as well as their correlation and the PCA plot showing 
 their position in a latent space based on their profiles.
 
-.. image:: _static/20240308__15:01:41_491383__567dc9ae-dd54-11ee-a2b6-a683e7d784ed__coverage_mean__heatmap_kde_amplitude_plot.png
+.. image:: _static/example_summary_plot.png
     :alt: Summary plot for in-batch signals 
 
 Batch coverage plot
@@ -87,7 +87,7 @@ The batch coverage plot plots the signal one next to the other
 Fragment Length Distribution
 ----------------------------
 
-.. image:: _static/20240308__16:14:54_826386__8790378e-dd5e-11ee-b802-a683e7d784ed__fld__heatmap.png
+.. image:: _static/examples_fld__heatmap.png
     :alt: Fragment length distribution per position around CTCF transcription factor binding sites 
 
 
@@ -101,7 +101,7 @@ understanding the coverage plots and see how different fragment lengths contribu
 Fragment Length Distribution - coverage middle n points
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: _static/fld_middle_n__heatmap.png
+.. image:: _static/examples_fld_middle_n__heatmap.png
     :alt: Fragment length distribution middle n points per position around CTCF transcription factor binding sites 
 
 Relative Fragment Entropy 

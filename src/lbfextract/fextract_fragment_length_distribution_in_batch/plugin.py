@@ -32,7 +32,15 @@ def subsample_fragment_lengths(x, n):
     mask = x > 0
     probabilities = np.zeros_like(x)
     probabilities[mask] = x[mask] / x[mask].sum()
-    subsampled_reads = np.random.choice(len(x), size=n, p=probabilities, replace=True)
+    try:
+        subsampled_reads = np.random.choice(len(x), size=n, p=probabilities, replace=True)
+    except ValueError as e:
+        if str(e) == "probabilities do not sum to 1":
+            probabilities = np.ones_like(probabilities) / len(probabilities)
+            subsampled_reads = np.random.choice(len(x), p=probabilities)
+        else:
+            raise
+
     new_x = np.bincount(subsampled_reads, minlength=len(x))
     return new_x
 
@@ -328,7 +336,8 @@ class FextractHooks:
 class CliHook:
     @lbfextract.hookimpl_cli
     def get_command(self) -> click.Command:
-        @click.command(short_help="It extracts the fragment length distribution signal from a BAM file for each BED file provided.")
+        @click.command(
+            short_help="It extracts the fragment length distribution signal from a BAM file for each BED file provided.")
         @click.option('--path_to_bam', type=click.Path(exists=False,
                                                        file_okay=True,
                                                        dir_okay=True,

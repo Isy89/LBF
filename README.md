@@ -94,6 +94,20 @@ and disabled:
 ```bash
 lbfextract setup disable-autocompletion
 ```
+## Computational requirements 
+
+### Recommended System Requirements
+
+- **Operating System:** Linux, macOS
+- **Memory:** 8 GB RAM or more depending on the number of BED files used, the number of genomic intervals per BED file 
+  and length of the genomic intervals used including the flanking regions
+
+In the following tables, we provide a reference for the peak of memory usage and time required for the analysis 
+of a 20x sample using different feature extraction methods and varying the number of BED files and the number
+of genomic intervals used. For this analysis, 8 cores were used and the length of a genomic interval
+was kept equal to 4000 bp.
+
+![computational_requirements.png](computational_requirements.png)
 
 ## Documentation
 
