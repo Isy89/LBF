@@ -41,21 +41,20 @@ def get_peaks(distribution, height=0.0001, distance=100):
     peaks = find_peaks(distribution, height=height, distance=distance)[0]
     return peaks
 
-
 def subsample_fragment_lengths(x, n):
-    mask = x > 0
-    probabilities = np.zeros_like(x)
-    probabilities[mask] = x[mask] / x[mask].sum()
+    new_x = np.zeros_like(x)
+    probabilities = np.where(x > 0, x / x.sum(), 0)
     try:
-        subsampled_reads = np.random.choice(len(x), size=n, p=probabilities, replace=True)
+        subsampled_reads = np.random.choice(np.arange(0, x.shape[0]), size=n,
+                                        p=probabilities, replace=True)
     except ValueError as e:
         if str(e) == "probabilities do not sum to 1":
             probabilities = np.ones_like(probabilities) / len(probabilities)
             subsampled_reads = np.random.choice(len(x), p=probabilities)
         else:
             raise
-
-    new_x = np.bincount(subsampled_reads, minlength=len(x))
+    for i in range(x.shape[0]):
+        new_x[i] = np.sum(subsampled_reads == i)
     return new_x
 
 
@@ -146,6 +145,7 @@ class FextractHooks:
             else:
                 tensor += fld_extractor(interval)
 
+        # TODO: optimize this for speed and readability
         if config.n_bins_pos:
             tensor = np.hstack(
                 list(map(lambda x: x.sum(axis=1)[:, None], np.array_split(tensor, config.n_bins_pos, axis=1))))
