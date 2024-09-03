@@ -59,8 +59,7 @@ For the installation of LBFextract, the following is required:
     - setuptools~=62.0.0
 
 conda is used to create a separate environment used by LBFextract, such that the user conda environment is 
-not influenced. If samtools is already available, conda is not necessary. When LBFextract does not find its specific 
-conda environment, will look for samtools in the current env. Be aware that samtools should be 1.14.
+not influenced. 
 
 To be able to run the tests also the following python package is required:
 
@@ -70,10 +69,43 @@ To be able to run the tests also the following python package is required:
 
 LBFextract can be installed as follows:
 
+## Strategy 1 
+
+If you are already in a conda env with python 3.10 and setuptools the package can be directly installed with:
 ```bash
-git clone https://github.com/Isy89/LBF.git && cd LBF
 python -m pip install .
 ```
+or also directly from github without the need to clone the repository:
+
+```bash
+python -m pip install "lbfextract @ git+https://github.com/Isy89/LBF.git"
+```
+
+if there is no conda with the required requirements, one can install the conda env with the given yml file
+This can be achieved with the following installation strategy 
+
+## Strategy 2
+
+### Step 1: clone the repository
+
+```bash
+git clone https://github.com/Isy89/LBF.git && cd LBF
+```
+
+## Step 2: create a conda env
+
+create a conda env with the essential to install the package:
+
+```bash
+conda env create -n env_name -f conda_env.yml -y && conda activate env_name
+```
+
+### Step 3: install the package
+
+```bash
+python -m pip install .
+```
+
 
 After the installation, the command line interface lbfextract should be available.
 Using it, a conda environment isolated from the current one containing samtools need to be created.
