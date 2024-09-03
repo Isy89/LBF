@@ -148,7 +148,7 @@ was kept equal to 4000 bp.
 ## Paper/Cite
 
 If you want to have a look at the paper, you can find it [here](https://doi.org/10.1016/j.csbj.2024.08.007).
-Please, if you use LBFextract in your work, cite the following paper:
+If you use LBFextract in your research, please cite the following paper:
 
 ```bibtex
 @article{LAZZERI20243163,
