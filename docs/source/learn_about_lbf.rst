@@ -164,7 +164,8 @@ Paper/Citation
 If you want to have a look at the paper, you can find it `here <https://doi.org/10.1016/j.csbj.2024.08.007>`_.
 If you use LBFextract in your research, please cite the following paper:
 
-.. code-block:: bibtex
+::
+
     @article{LAZZERI20243163,
     title = {LBFextract: Unveiling transcription factor dynamics from liquid biopsy data},
     journal = {Computational and Structural Biotechnology Journal},
