@@ -24,7 +24,7 @@ From: ubuntu:latest
     echo $PWD
     git fetch
     python setup.py bdist_wheel && python -m pip install --force-reinstall dist/*.whl
-    lbfextract setup create-conda-envs
+    lbfextract setup create-conda-env
     pip install pytest
     pytest -s ./tests/test_cli.py::TestCli::test_extract_coverage
 
