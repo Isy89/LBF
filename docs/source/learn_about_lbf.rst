@@ -157,3 +157,29 @@ The second set of commands are used to analyze the extracted features.
 The third set of commands are used to setup the conda environments required
 for the features present in LBFextract to work.
 The fourth command is used to start the TUI interface.
+
+Paper/Citation
+--------------
+
+If you want to have a look at the paper, you can find it `here <https://doi.org/10.1016/j.csbj.2024.08.007>`_.
+If you use LBFextract in your research, please cite the following paper:
+
+.. code-block:: bibtex
+    @article{LAZZERI20243163,
+    title = {LBFextract: Unveiling transcription factor dynamics from liquid biopsy data},
+    journal = {Computational and Structural Biotechnology Journal},
+    volume = {23},
+    pages = {3163-3174},
+    year = {2024},
+    issn = {2001-0370},
+    doi = {https://doi.org/10.1016/j.csbj.2024.08.007},
+    url = {https://www.sciencedirect.com/science/article/pii/S200103702400268X},
+    author = {Isaac Lazzeri and Benjamin Gernot Spiegl and Samantha O. Hasenleithner and Michael R. Speicher and Martin Kircher},
+    keywords = {Cell-free DNA, Bioinformatics, Whole-genome sequencing, Transcription factors, Fragmentomics},
+    abstract = {Motivation
+    The analysis of circulating cell-free DNA (cfDNA) holds immense promise as a non-invasive diagnostic tool across various human conditions. However, extracting biological insights from cfDNA fragments entails navigating complex and diverse bioinformatics methods, encompassing not only DNA sequence variation, but also epigenetic characteristics like nucleosome footprints, fragment length, and methylation patterns.
+    Results
+    We introduce Liquid Biopsy Feature extract (LBFextract), a comprehensive package designed to streamline feature extraction from cfDNA sequencing data, with the aim of enhancing the reproducibility and comparability of liquid biopsy studies. LBFextract facilitates the integration of preprocessing and postprocessing steps through alignment fragment tags and a hook mechanism. It incorporates various methods, including coverage-based and fragment length-based approaches, alongside two novel feature extraction methods: an entropy-based method to infer TF activity from fragmentomics data and a technique to amplify signals from nucleosome dyads. Additionally, it implements a method to extract condition-specific differentially active TFs based on these features for biomarker discovery. We demonstrate the use of LBFextract for the subtype classification of advanced prostate cancer patients using coverage signals at transcription factor binding sites from cfDNA. We show that LBFextract can generate robust and interpretable features that can discriminate between different clinical groups. LBFextract is a versatile and user-friendly package that can facilitate the analysis and interpretation of liquid biopsy data.
+    Data and Code Availability and Implementation
+    LBFextract is freely accessible at https://github.com/Isy89/LBF. It is implemented in Python and compatible with Linux and Mac operating systems. Code and data to reproduce these analyses have been uploaded to 10.5281/zenodo.10964406.}
+    }
