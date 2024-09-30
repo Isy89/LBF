@@ -147,7 +147,7 @@ was kept equal to 4000 bp.
 
 ## Paper/Cite
 
-If you want to have a look at the paper, you can find it [here](https://doi.org/10.1016/j.csbj.2024.08.007).
+If you want to have a look at the paper, you can find it **[here](https://doi.org/10.1016/j.csbj.2024.08.007)**.
 If you use LBFextract in your research, please cite the following paper:
 
 ```bibtex
@@ -169,6 +169,14 @@ We introduce Liquid Biopsy Feature extract (LBFextract), a comprehensive package
 Data and Code Availability and Implementation
 LBFextract is freely accessible at https://github.com/Isy89/LBF. It is implemented in Python and compatible with Linux and Mac operating systems. Code and data to reproduce these analyses have been uploaded to 10.5281/zenodo.10964406.}
 }
+```
+
+LBFextract is also using **[PyComplexHeatmap](https://github.com/DingWB/PyComplexHeatmap)** for the generation of the heatmap of differentially active transcription factors. This can be referenced as follows:
+
+```
+Ding, W., Goldberg, D. and Zhou, W. (2023), PyComplexHeatmap: A Python package to visualize multimodal genomics data. iMeta e115. https://doi.org/10.1002/imt2.115
+DOI: 10.1002/imt2.115
+PMID: 38454967
 ```
 
 ## Copyright
