@@ -112,7 +112,7 @@ Using it, a conda environment isolated from the current one containing samtools 
 To install this conda env run the following command:
 
 ```bash
-lbfextract setup create-conda-envs # creates a separate conda env used for filtering the bam files and other steps
+lbfextract setup create-conda-env # creates a separate conda env used for filtering the bam files and other steps
 ```
 
 if using bash, autocompletion can be enabled (at the moment it only supports autocompletion for bash, other shells will be added in the feature...):
