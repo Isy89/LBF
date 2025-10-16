@@ -75,7 +75,7 @@ To install lbfextract specific conda environment to have a separate running samt
 
 .. code-block:: bash
 
-    lbfextract setup create-conda-envs
+    lbfextract setup create-conda-env
 
 LBF extract can be used in 3 ways:
 
